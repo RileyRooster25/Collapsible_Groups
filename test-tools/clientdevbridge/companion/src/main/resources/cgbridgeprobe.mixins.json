@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.starskyxiii.cgbridgeprobe.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.starskyxiii.cgbridgeprobe.ProbePlugin",
+  "client": [
+    "KeyboardAccess",
+    "MouseAccess",
+    "DispatcherMixin",
+    "FrameMixin",
+    "TickMixin",
+    "ModifierMixin",
+    "HeldKeyMixin",
+    "SourceCellMixin",
+    "JeiGridMixin",
+    "JeiSearchMixin",
+    "JeiButtonMixin",
+    "EmiSpaceMixin",
+    "EmiDrawMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

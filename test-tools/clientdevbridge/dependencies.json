@@ -1,0 +1,80 @@
+{
+  "minecraft": "1.21.1",
+  "neoforge": "21.1.249",
+  "fabricLoader": "0.16.14",
+  "extras": {
+    "kubejs": {
+      "file": "kubejs-neoforge-2101.7.2-build.374.jar",
+      "version": "2101.7.2-build.374",
+      "sha256": "4cd1a21cdda2d0b147995a59aa2cd3b3b21b5603d5aae4fda4995e2d4c19a101"
+    },
+    "rhino": {
+      "file": "rhino-2101.2.8-build.91.jar",
+      "version": "2101.2.8-build.91",
+      "sha256": "1d53d962aa4dac54bcbb4f998c1845980cf194318f1d6b1580ea6ac15cce5ef3"
+    },
+    "architectury": {
+      "file": "architectury-13.0.11-neoforge.jar",
+      "version": "13.0.11",
+      "sha256": "9cc92f2c09533fc5482c60f993bd891c655a0e32b637037cdcb7c2b23adedeeb"
+    },
+    "fabric_bridge": {
+      "loader": "fabric",
+      "sha256": "5ee68d5f31b1e087426b69e3d2a2823789d686b579a0d5a9a452ac0f2fd27882",
+      "version": "1.0.0",
+      "modId": "clientdevbridge",
+      "file": "clientdevbridge-1.21.1-fabric-1.0.0-171.jar"
+    },
+    "fabric_emi": {
+      "loader": "fabric",
+      "sha256": "56ecd418e988cba23dd653d498309fd7b886265708253d5ca7a8fb621dcc5db4",
+      "version": "1.1.24+1.21.1+fabric",
+      "modId": "emi",
+      "file": "emi-fabric-1.1.24+1.21.1.jar"
+    },
+    "fabric-api": {
+      "loader": "fabric",
+      "sha256": "79ac44b40780acbd884b34c50be1e39af682847e5f5cb3b1fddeeaa768dce800",
+      "version": "0.116.17+1.21.1",
+      "modId": "fabric-api",
+      "file": "fabric-api-0.116.17+1.21.1.jar"
+    },
+    "fabric_jei": {
+      "loader": "fabric",
+      "sha256": "90d74859fd7e32f3b2d6d4e3c02cc556642278e46d303c0d8ca508ddef467347",
+      "version": "19.42.0.379",
+      "modId": "jei",
+      "file": "jei-1.21.1-fabric-19.42.0.379.jar"
+    },
+    "toomanyrecipeviewers": {
+      "sha256": "f9e4ad2912bb67ce5a22aab2d9b07b5babeda476ab9b233bb494782bd7c020fa",
+      "version": "0.9.0+mc.21.1",
+      "provides": {
+        "jei": "19.27.0.343"
+      },
+      "file": "toomanyrecipeviewers-0.9.0+mc.21.1.jar"
+    },
+    "mekanism": {
+      "sha256": "004dbc9f3106f4d192aeaa1ee1190dd16ec9ca8059ed3d093b80034f4c574f43",
+      "version": "10.7.19",
+      "file": "Mekanism-1.21.1-10.7.19.85.jar"
+    }
+  },
+  "mods": {
+    "clientdevbridge": {
+      "file": "clientdevbridge-1.21.1-neoforge-1.0.0-171.jar",
+      "version": "1.0.0",
+      "sha256": "9907fd5f484c25c40040a40a255d1a428b3cd8d31cfe7dad7f0f6e0fa876ba7b"
+    },
+    "emi": {
+      "file": "emi--emi-1.1.24+1.21.1+neoforge.jar",
+      "version": "1.1.24+1.21.1+neoforge",
+      "sha256": "b68691f94f0727fc517cac2ab55bd6658d1179cc8cc715fe610b60c37469bc4c"
+    },
+    "jei": {
+      "file": "jei-1.21.1-neoforge-19.42.0.379.jar",
+      "version": "19.42.0.379",
+      "sha256": "a58bf909819d5b7e5264e7be6d7c1a27b5de35e0611c80f382de086dddbb1a23"
+    }
+  }
+}

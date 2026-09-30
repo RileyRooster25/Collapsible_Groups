@@ -1,0 +1,8 @@
+/local.json
+/profiles/*.json
+/evidence/
+/staging/
+/*.lock
+/companion/libs/
+/companion-fabric/libs/
+/observe-*.json

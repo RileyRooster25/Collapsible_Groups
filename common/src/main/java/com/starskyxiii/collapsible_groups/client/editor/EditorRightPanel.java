@@ -61,14 +61,20 @@ final class EditorRightPanel {
 	// -----------------------------------------------------------------------
 
 	void rebuild() {
+		rebuild(EditorRuntimeServices.get());
+	}
+
+	void rebuild(EditorRuntimeAccess runtime) {
 		previewEntries = null;
-		long traceStart = EditorRuntimeServices.get().beginTrace();
+		long traceStart = runtime.beginTrace();
 		GroupDefinition temp = state.buildPreviewDefinition();
 		var contents = state.contentsDraftSnapshot();
-		if (state.canUseIndexedItemPreview()) {
-			List<ItemStack> indexed = EditorRuntimeServices.get().resolvePreviewItems(temp, contents, true);
-			if (EditorRuntimeServices.get().verifyItemIndex()) {
-				List<ItemStack> scanned = EditorRuntimeServices.get().resolveItems(temp);
+		if (state.buildCurrentFilter().filter(temp.filter()::equals).isEmpty()) {
+			groupItems = runtime.resolveItems(temp);
+		} else if (state.canUseIndexedItemPreview()) {
+			List<ItemStack> indexed = runtime.resolvePreviewItems(temp, contents, true);
+			if (runtime.verifyItemIndex()) {
+				List<ItemStack> scanned = runtime.resolveItems(temp);
 				verifyIndexResult(indexed, scanned);
 			}
 			groupItems = indexed;
@@ -76,15 +82,15 @@ final class EditorRightPanel {
 			// Hybrid drafts with preserved subtrees are not flat-index safe. Resolve the union of the
 			// indexed flat matches and the memoised preserved-subtree full scan — item-for-item and
 			// order-for-order identical to resolveItems(temp).
-			List<ItemStack> union = EditorRuntimeServices.get().resolvePreviewItems(temp, contents, false);
-			if (EditorRuntimeServices.get().verifyItemIndex()) {
-				List<ItemStack> scanned = EditorRuntimeServices.get().resolveItems(temp);
+			List<ItemStack> union = runtime.resolvePreviewItems(temp, contents, false);
+			if (runtime.verifyItemIndex()) {
+				List<ItemStack> scanned = runtime.resolveItems(temp);
 				verifyIndexResult(union, scanned);
 			}
 			groupItems = union;
 		}
-		groupFluids = EditorRuntimeServices.get().resolveFluids(temp, "EditorRightPanel.buildFluidViews");
-		groupGenericIngredients = EditorRuntimeServices.get().resolveGenericIngredients(
+		groupFluids = runtime.resolveFluids(temp, "EditorRightPanel.buildFluidViews");
+		groupGenericIngredients = runtime.resolveGenericIngredients(
 			temp, "EditorRightPanel.buildGenericViews");
 		// Converge the rule-coverage id sets from this single resolve pass so
 		// the source grid can flag rule-covered cells (green, not toggleable) without
@@ -93,7 +99,7 @@ final class EditorRightPanel {
 			state.itemRuleCoverageKeys(groupItems),
 			EditorRuleCoverageKeys.fluidIds(groupFluids),
 			EditorRuleCoverageKeys.genericKeys(groupGenericIngredients));
-		EditorRuntimeServices.get().logIfSlow("EditorRightPanel.rebuild", traceStart, 10,
+		runtime.logIfSlow("EditorRightPanel.rebuild", traceStart, 10,
 			"group=" + temp.id()
 				+ " items=" + groupItems.size()
 				+ " fluids=" + groupFluids.size()
