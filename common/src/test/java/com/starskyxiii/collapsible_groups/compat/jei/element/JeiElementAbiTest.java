@@ -36,38 +36,18 @@ class JeiElementAbiTest {
 	}
 
 	@Test
-	void customElementsInheritTheActiveJeiClickDescriptor() throws ReflectiveOperationException {
-		List<Method> clicks = Arrays.stream(IElement.class.getMethods())
-			.filter(method -> method.getName().equals("handleClick")).toList();
-		assertEquals(1, clicks.size());
-		Method click = clicks.getFirst();
-		assertTrue(click.isDefault());
-		assertEquals(boolean.class, click.getReturnType());
-		assertEquals(2, click.getParameterCount());
-		assertTrue(IJeiUserInput.class.isAssignableFrom(click.getParameterTypes()[0]));
-		assertEquals(IInternalKeyMappings.class, click.getParameterTypes()[1]);
-		for (Class<?> elementType : ELEMENT_TYPES) {
-			assertEquals(IElement.class, elementType.getMethod("handleClick", click.getParameterTypes()).getDeclaringClass());
-		}
-		assertEquals(IElement.class, IngredientElement.class
-			.getMethod("handleClick", click.getParameterTypes()).getDeclaringClass());
-	}
-
-	@Test
-	void ordinaryJeiElementsStillLeaveClickHandlingToTheNativeChain() throws ReflectiveOperationException {
-		IElement<?> element = (IElement<?>) Proxy.newProxyInstance(IElement.class.getClassLoader(),
-			new Class<?>[] { IElement.class }, (proxy, method, args) -> InvocationHandler.invokeDefault(proxy, method, args));
-		Method click = Arrays.stream(IElement.class.getMethods())
-			.filter(method -> method.getName().equals("handleClick")).findFirst().orElseThrow();
-		assertEquals(Boolean.FALSE, click.invoke(element, new Object[] { null, null }));
-	}
-
-	@Test
-	void headerClickBridgeUsesThePublicInputContract() throws ReflectiveOperationException {
-		assertTrue(JeiClickableElement.class.isAssignableFrom(GroupHeaderElement.class));
-		Method bridge = GroupHeaderElement.class.getDeclaredMethod("handleJeiClick", IJeiUserInput.class,
+	void headerOverridesPrepareActionWhileChildrenKeepNativeBehavior() throws ReflectiveOperationException {
+		Method action = IElement.class.getMethod("prepareAction", mezz.jei.common.input.UserInput.class,
 			IInternalKeyMappings.class);
-		assertEquals(boolean.class, bridge.getReturnType());
+		assertTrue(action.isDefault());
+		assertEquals(java.util.Optional.class, action.getReturnType());
+		for (Class<?> type : ELEMENT_TYPES) {
+			assertEquals(type == GroupHeaderElement.class ? type : IElement.class,
+				type.getMethod(action.getName(), action.getParameterTypes()).getDeclaringClass());
+		}
+		IElement<?> ordinary = (IElement<?>) Proxy.newProxyInstance(IElement.class.getClassLoader(),
+			new Class<?>[] { IElement.class }, (proxy, method, args) -> InvocationHandler.invokeDefault(proxy, method, args));
+		assertEquals(java.util.Optional.empty(), action.invoke(ordinary, new Object[] { null, null }));
 	}
 
 	@Test

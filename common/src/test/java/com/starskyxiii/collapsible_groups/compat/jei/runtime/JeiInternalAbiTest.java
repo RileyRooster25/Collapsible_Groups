@@ -5,7 +5,7 @@ import mezz.jei.common.input.IInternalKeyMappings;
 import mezz.jei.gui.bookmarks.BookmarkList;
 import mezz.jei.gui.elements.IconButton;
 import mezz.jei.gui.input.GuiTextFieldFilter;
-import mezz.jei.common.input.IUserInputHandler;
+import mezz.jei.common.input.IInputTarget;
 import mezz.jei.common.input.UserInput;
 import mezz.jei.gui.overlay.IngredientListOverlay;
 import mezz.jei.gui.overlay.bookmarks.BookmarkOverlay;
@@ -74,11 +74,11 @@ class JeiInternalAbiTest {
 	void bookmarkTextFieldAndInputContractsRemainAvailable() throws ReflectiveOperationException {
 		assertNotNull(BookmarkList.class.getDeclaredMethod(
 			"onElementBookmarked", IElement.class, UserInput.class, BookmarkOverlay.class));
-		assertNotNull(GuiTextFieldFilter.class.getDeclaredField("area"));
+		assertNotNull(GuiTextFieldFilter.class.getDeclaredMethod("getArea"));
 		assertNotNull(UserInput.class.getDeclaredMethod(
-			"ifMouseEvent", UserInput.MouseClickable.class));
-		assertNotNull(IUserInputHandler.class.getDeclaredMethod(
-			"handleUserInput", Screen.class, IGuiProperties.class,
+			"ifMouseEvent", UserInput.IMouseClickable.class));
+		assertNotNull(IInputTarget.class.getDeclaredMethod(
+			"beginInput", Screen.class,
 			UserInput.class, IInternalKeyMappings.class));
 	}
 }

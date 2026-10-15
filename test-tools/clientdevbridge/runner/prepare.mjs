@@ -18,7 +18,7 @@ for(const id of requested) {
   const lib=path.join(root,platform==='fabric'?'companion-fabric':'companion','libs');
   const product=productFor(platform);
   const probe={file:'cg-bridge-probe-26.1.2-'+platform+'-0.1.0.jar',version:'0.1.0'};
-  const instance='CG Bridge 26 '+id+' 20260930',port=def.port,session=randomUUID();
+  const instance='CG Bridge 26 '+id+' '+(local.instanceSuffix??'20260930'),port=def.port,session=randomUUID();
   const instances=await fs.realpath(path.join(local.prismData,'instances'));
   const target=path.resolve(instances,instance);
   assert.equal(path.dirname(target),instances);

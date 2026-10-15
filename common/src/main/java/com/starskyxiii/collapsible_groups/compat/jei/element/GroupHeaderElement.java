@@ -7,7 +7,8 @@ import com.starskyxiii.collapsible_groups.compat.jei.ui.GroupThemeResolver;
 import com.starskyxiii.collapsible_groups.i18n.ModTranslationKeys;
 import com.starskyxiii.collapsible_groups.platform.Services;
 import mezz.jei.api.gui.drawable.IDrawable;
-import mezz.jei.api.gui.inputs.IJeiUserInput;
+import mezz.jei.common.input.UserInput;
+import mezz.jei.common.input.interaction.InputAction;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -32,7 +33,7 @@ import java.util.Optional;
  * Unified JEI element for all collapsible group header slots.
  * Uses {@link GroupIcon} as the ingredient type for full rendering control.
  */
-public final class GroupHeaderElement implements IElement<GroupIcon>, PreRenderIngredientGridElement, JeiClickableElement {
+public final class GroupHeaderElement implements IElement<GroupIcon>, PreRenderIngredientGridElement {
 
 	private final ITypedIngredient<GroupIcon> typedIcon;
 	private final Component countLabel;
@@ -94,12 +95,11 @@ public final class GroupHeaderElement implements IElement<GroupIcon>, PreRenderI
 	}
 
 	@Override
-	public boolean handleJeiClick(IJeiUserInput input, IInternalKeyMappings keyBindings) {
-		if (!input.is(keyBindings.getLeftClick())) return false;
-		if (!input.isSimulate()) {
+	public Optional<InputAction> prepareAction(UserInput input, IInternalKeyMappings keyBindings) {
+		if (!input.is(keyBindings.getLeftClick())) return Optional.empty();
+		return Optional.of(InputAction.run(() -> {
 			GroupRegistry.toggleById(icon().groupId());
 			onToggle.run();
-		}
-		return true;
+		}));
 	}
 }

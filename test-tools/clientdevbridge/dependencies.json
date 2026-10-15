@@ -14,10 +14,10 @@
     "jei": {
       "loader": "neoforge",
       "modId": "jei",
-      "file": "jei-26.1.2-neoforge-29.43.0.106.jar",
-      "version": "29.43.0.106",
-      "sha256": "a66fd1b3a258fc02f24a1068c9a7809ea4118cfae2414ace8f84a6fade8a1903",
-      "url": "https://maven.blamejared.com/mezz/jei/jei-26.1.2-neoforge/29.43.0.106/jei-26.1.2-neoforge-29.43.0.106.jar"
+      "file": "jei-26.1.2-neoforge-29.47.0.110.jar",
+      "version": "29.47.0.110",
+      "sha256": "588848a720be5c8810d114a8d7e65cc29d6b86dcf7f8c5ad050f6e73321fd09a",
+      "url": "https://maven.blamejared.com/mezz/jei/jei-26.1.2-neoforge/29.47.0.110/jei-26.1.2-neoforge-29.47.0.110.jar"
     }
   },
   "extras": {
@@ -32,10 +32,10 @@
     "fabric_jei": {
       "loader": "fabric",
       "modId": "jei",
-      "file": "jei-26.1.2-fabric-29.43.0.106.jar",
-      "version": "29.43.0.106",
-      "sha256": "352c594fecc491e30ed96e427e6c0617ea95ec134cb3482fce0c57ff9e65e739",
-      "url": "https://maven.blamejared.com/mezz/jei/jei-26.1.2-fabric/29.43.0.106/jei-26.1.2-fabric-29.43.0.106.jar"
+      "file": "jei-26.1.2-fabric-29.47.0.110.jar",
+      "version": "29.47.0.110",
+      "sha256": "f210f68d13c0be191db4e58ec05aa70dde13cd8a05badc3736399d8d7f660354",
+      "url": "https://maven.blamejared.com/mezz/jei/jei-26.1.2-fabric/29.47.0.110/jei-26.1.2-fabric-29.47.0.110.jar"
     },
     "fabric-api": {
       "loader": "fabric",

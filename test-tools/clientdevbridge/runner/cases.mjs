@@ -57,11 +57,28 @@ export async function core(d) {
  await d.capture('overlay-expanded');
  s=d.current;await d.click(s.overlayCells.find(c=>c.role==='header'&&c.groupId===id));
  s=await d.check('collapse-mixed-header',s=>s.overlayCells.some(c=>c.role==='header'&&c.groupId===id&&!c.expanded)&&!s.overlayCells.some(c=>['item:minecraft:stone','item:minecraft:dirt','fluid:minecraft:water'].includes(c.id)));
+ if(d.viewer==='jei'&&!d.report.smoke) {
+  const header=s.overlayCells.find(c=>c.role==='header'&&c.groupId===id);
+  await d.input({action:'drag',...center(header),points:[[2,s.guiHeight-2]]});
+  s=await d.check('header-drag-out-cancels-toggle',s=>s.overlayCells.some(c=>c.role==='header'&&c.groupId===id&&!c.expanded));
+ }
  await d.text(s.viewerSearch,'cg_no_such_item_93df2e');
  s=await d.check('search-negative',s=>s.viewerSearch?.value==='cg_no_such_item_93df2e'&&s.overlayCells.length===0);
+ if(d.viewer==='jei') {
+  s=await d.check('empty-search-keeps-manager-button',s=>Boolean(s.managerButton)&&s.overlayCells.length===0);
+  await d.capture('empty-search-manager-button');
+  await d.manager();
+  await d.check('manager-opens-from-empty-search',s=>s.screen==='GroupManagerScreen'&&!s.pending);
+  s=await d.inventory();
+ }
  await d.text(s.viewerSearch,'stone');
  s=await d.check('search-positive-small-group-ungrouped',s=>s.viewerSearch?.value==='stone'&&s.overlayCells.some(c=>c.id==='item:minecraft:stone')&&!s.overlayCells.some(c=>c.role==='header'&&c.groupId===id));
  await d.text(s.viewerSearch,'');
+ if(d.report.smoke) {
+  await d.findHeader(id);
+  await d.check('clear-search-restores-collapsed-group',s=>s.viewerSearch?.value===''&&s.overlayCells.some(c=>c.role==='header'&&c.groupId===id&&!c.expanded));
+  return id;
+ }
  await d.manager();s=await d.state();await d.text(s.search,'Bridge Smoke');s=await d.state(s=>s.cards.some(c=>c.id===id));await d.click(s.cards.find(c=>c.id===id).toggle);
  await d.check('disable-group',s=>s.cards?.some(c=>c.id===id&&!c.enabled));
  s=await d.inventory();await d.text(s.viewerSearch,'stone');await d.check('disabled-overlay',s=>!s.overlayCells.some(c=>c.groupId===id)&&s.overlayCells.some(c=>c.id==='item:minecraft:stone'));

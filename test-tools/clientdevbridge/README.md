@@ -12,8 +12,8 @@ The setup uses these versions. Third-party mod downloads and hashes are pinned i
 
 | Component | Version |
 | --- | --- |
-| Minecraft / Collapsible Groups | 26.1.2 / 2.0.0-beta3 |
-| JEI | 29.43.0.106 |
+| Minecraft / Collapsible Groups | 26.1.2 / 2.0.0-beta4 |
+| JEI | 29.47.0.110 |
 | NeoForge | 26.1.2.99 |
 | Fabric Loader / Fabric API | 0.19.5 / 0.155.3+26.1.2 |
 | ClientDevBridge | 1.0.0, build 172 |
@@ -62,8 +62,8 @@ This creates separate Prism instances and saves their details under `profiles/`.
 
 | Profile | Loader | Port | Checks per run |
 | --- | --- | --- | --- |
-| `neo-jei` | NeoForge | 25931 | 46 game checks and 3 image comparisons |
-| `fabric-jei` | Fabric | 25932 | 46 game checks and 3 image comparisons |
+| `neo-jei` | NeoForge | 25931 | 49 game checks and 3 image comparisons |
+| `fabric-jei` | Fabric | 25932 | 49 game checks and 3 image comparisons |
 
 Use `prepare` once per profile. To update an existing instance, follow **Rebuild and rerun** below.
 
@@ -155,3 +155,7 @@ The path must not exist; do not create the directory.
 Keep `local.json`, generated profiles, downloaded JARs, evidence, and internal test reports local. Their paths are ignored by Git. Test source, example configuration, dependency pins, and reviewed baseline images belong in the repository.
 
 These profiles cover local single-player JEI testing on Fabric and NeoForge. They do not cover EMI, multiplayer, other resolutions, or performance measurements. ClientDevBridge source and artifact versions are recorded in [dependencies.json](dependencies.json).
+
+### Focused JEI compatibility smoke check
+
+Run `node runner/run.mjs neo-jei --jei-smoke` to check native clicks, expand/collapse, manager entry with empty search results, and search/clear behavior. This mode runs 14 checks, saves screenshots, skips drag operations and cold restart, and restores fixtures after normal shutdown. It does not replace the full suite.
