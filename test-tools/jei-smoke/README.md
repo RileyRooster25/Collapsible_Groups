@@ -1,0 +1,9 @@
+# JEI compatibility smoke test (Minecraft 1.20.1)
+
+This standalone tool loads the published mod and JEI jars in an owned, disposable Prism instance. It is excluded from all product builds. It verifies header expansion/collapse, manager entry (including empty search results), search filtering, and clearing the query. Input enters Minecraft through MouseHandler/KeyboardHandler. Assertions use three distinct rendered frames and client ticks; screenshots and logs accompany the result. Drag tests are intentionally outside this smoke suite.
+
+Build the main mod, then run Gradle with JDK 25: `../../gradlew -p . :forge:build :fabric:build`. The probe targets Java 17. Put Prism paths and exact JEI/Fabric API artifact paths in `local.json` (see `local.example.json`). Run `node prepare.mjs forge fabric`, then `node run.mjs forge` and `node run.mjs fabric`. If a delayed launcher confirmation leaves the owned client already running, use `node run.mjs <loader> --attach`; identity and artifact checks still apply. Preparation refuses to overwrite existing instances. Each test creates a new superflat world in its isolated instance; use a fresh instance suffix for a repeat run.
+
+The probe starts only with `cgsmoke.enabled=true`, a random session matching `.cg-smoke-owned.json`, and an explicit port. Its HTTP service binds to 127.0.0.1, authenticates every request with that session, and exposes only identity, observation, bounded native input, screenshot, isolated world creation, and normal shutdown. It has no arbitrary evaluation endpoint. Keep this test jar out of normal modpacks.
+
+`profiles/`, `evidence/`, local settings, and build outputs are ignored. Evidence records the exact product, probe, and dependency SHA-256 values, verifies the process identity, and checks normal client shutdown. Failed checks remain failed; a later passing run produces a separate record.

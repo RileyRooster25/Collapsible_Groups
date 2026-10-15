@@ -39,7 +39,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
+import mezz.jei.common.util.Translator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -127,7 +127,7 @@ public final class JeiIngredientFilterController {
 		if (current == null) {
 			String raw = filterText.get();
 			searchTextForCache = raw;
-			buildStructureCache(uncachedIngredients.apply(raw.toLowerCase(Locale.ROOT)).toList());
+			buildStructureCache(uncachedIngredients.apply(Translator.toLowercaseWithLocale(raw)).toList());
 			current = buildDisplayFromCache();
 			setDisplayCache.accept(current);
 		}

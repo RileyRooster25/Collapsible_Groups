@@ -21,7 +21,7 @@ class JeiOverlayRenderContractTest {
 	@Test
 	void productionRenderPathCallsIngredientOverlayScreenPhase() throws IOException {
 		assertProductionCall(
-			"onDrawBackgroundPost",
+			"drawOverlays",
 			"drawScreen",
 			"(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/gui/GuiGraphics;IIF)V"
 		);

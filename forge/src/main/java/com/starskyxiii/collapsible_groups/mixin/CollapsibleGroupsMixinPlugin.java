@@ -1,7 +1,6 @@
 package com.starskyxiii.collapsible_groups.mixin;
 
 import com.starskyxiii.collapsible_groups.viewer.LoaderViewerEnvironment;
-import com.starskyxiii.collapsible_groups.compat.jei.runtime.JeiInputMixinTargets;
 import com.starskyxiii.collapsible_groups.viewer.ViewerCompatibilityEnvironment;
 import com.starskyxiii.collapsible_groups.viewer.ViewerSelectionPolicy;
 import org.objectweb.asm.tree.ClassNode;
@@ -15,15 +14,9 @@ public class CollapsibleGroupsMixinPlugin implements IMixinConfigPlugin {
 	private final ViewerCompatibilityEnvironment environment = LoaderViewerEnvironment.detectEarly();
 	private static final Set<String> JEI_INTERNAL_MIXINS = Set.of(
 		"com.starskyxiii.collapsible_groups.mixin.MixinIngredientFilter",
-		"com.starskyxiii.collapsible_groups.mixin.MixinFocusInputHandler",
-		"com.starskyxiii.collapsible_groups.mixin.MixinElementInputHandler",
 		"com.starskyxiii.collapsible_groups.mixin.MixinBookmarkList",
 		"com.starskyxiii.collapsible_groups.mixin.MixinIngredientListOverlay",
-		"com.starskyxiii.collapsible_groups.mixin.MixinGuiTextFieldFilterAccessor",
-		"com.starskyxiii.collapsible_groups.mixin.MixinGuiIconToggleButtonAccessor",
-		"com.starskyxiii.collapsible_groups.mixin.MixinIngredientListRenderer",
-		"com.starskyxiii.collapsible_groups.mixin.MixinIngredientListSlot",
-		"com.starskyxiii.collapsible_groups.mixin.MixinIngredientElement"
+		"com.starskyxiii.collapsible_groups.mixin.MixinIngredientListRenderer"
 	);
 	private static final Set<String> EMI_INTERNAL_MIXINS = Set.of(
 		"com.starskyxiii.collapsible_groups.mixin.MixinEmiScreenSpace",
@@ -45,10 +38,6 @@ public class CollapsibleGroupsMixinPlugin implements IMixinConfigPlugin {
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
 		if (JEI_INTERNAL_MIXINS.contains(mixinClassName)) {
-			if (targetClassName.equals(JeiInputMixinTargets.LEGACY) || targetClassName.equals(JeiInputMixinTargets.CURRENT)) {
-				return targetClassName.equals(JeiInputMixinTargets.select(environment.mayApplyJeiInternals(),
-					CollapsibleGroupsMixinPlugin::isClassPresent, environment.jeiVersion().detectedVersion()));
-			}
 			return environment.mayApplyJeiInternals() && isClassPresent(targetClassName);
 		}
 		if (EMI_INTERNAL_MIXINS.contains(mixinClassName)) {

@@ -57,7 +57,7 @@ class JeiElementAbiTest {
 		var header = new GroupHeaderElement(icon(), count, List.of(preview), () -> {});
 		var tooltip = new JeiTooltip();
 
-		header.appendTooltip(tooltip);
+		header.getTooltip(tooltip, null, null, null);
 
 		var lines = tooltip.getLines();
 		assertEquals(expanded ? 3 : 4, lines.size());
@@ -83,11 +83,15 @@ class JeiElementAbiTest {
 		assertDoesNotThrow(() -> header.show(null, null, List.of()));
 	}
 
+	@SuppressWarnings("unchecked")
 	private static ITypedIngredient<GroupIcon> icon() {
 		var icon = new GroupIcon(GROUP_ID, "test.jei_abi", "ABI group", List.of());
-		return new ITypedIngredient<>() {
-			@Override public IIngredientType<GroupIcon> getType() { return GroupIcon.TYPE; }
-			@Override public GroupIcon getIngredient() { return icon; }
-		};
+		return (ITypedIngredient<GroupIcon>) java.lang.reflect.Proxy.newProxyInstance(
+			ITypedIngredient.class.getClassLoader(), new Class<?>[]{ITypedIngredient.class},
+			(proxy, method, args) -> switch (method.getName()) {
+				case "getType" -> GroupIcon.TYPE;
+				case "getIngredient" -> icon;
+				default -> throw new AssertionError(method);
+			});
 	}
 }

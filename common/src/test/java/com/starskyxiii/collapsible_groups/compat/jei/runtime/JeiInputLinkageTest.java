@@ -18,16 +18,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class JeiInputLinkageTest {
 	private static final String PREFIX = "com/starskyxiii/collapsible_groups/compat/jei/";
 	private static final List<String> MOVED_TYPES = List.of(
-		"mezz/jei/gui/input/UserInput", "mezz/jei/common/input/UserInput",
+		"mezz/jei/gui/input/UserInput", "java/lang/reflect/",
 		"mezz/jei/gui/input/IUserInputHandler", "mezz/jei/common/input/IUserInputHandler",
 		"mezz/jei/gui/input/handlers/CombinedInputHandler", "mezz/jei/common/input/handlers/CombinedInputHandler",
 		"mezz/jei/gui/input/handlers/ProxyInputHandler"
 	);
 
 	@Test
-	void sharedInputIntegrationHasNoConcreteInputAbiLinkage() throws IOException {
-		for (String name : List.of("runtime/JeiInputHandlerAdapter", "runtime/JeiInputHandlerAdapter$Bindings",
-			"runtime/JeiIngredientListOverlayController", "runtime/JeiElementInputBridge", "element/GroupHeaderElement")) {
+	void sharedInputIntegrationHasNoReflectionOrRemovedInputTypes() throws IOException {
+		for (String name : List.of("runtime/JeiInputHandlerAdapter",
+			"runtime/JeiIngredientListOverlayController", "element/GroupHeaderElement")) {
 			try (var stream = getClass().getClassLoader().getResourceAsStream(PREFIX + name + ".class")) {
 				assertNotNull(stream, name);
 				new ClassReader(stream).accept(new ClassVisitor(Opcodes.ASM9) {

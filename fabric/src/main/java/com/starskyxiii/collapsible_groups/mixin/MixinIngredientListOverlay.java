@@ -3,8 +3,8 @@ package com.starskyxiii.collapsible_groups.mixin;
 import com.starskyxiii.collapsible_groups.compat.jei.runtime.JeiIngredientListOverlayController;
 import com.starskyxiii.collapsible_groups.platform.Services;
 import com.starskyxiii.collapsible_groups.viewer.ViewerLifecycleCoordinator;
-import com.starskyxiii.collapsible_groups.viewer.LoaderViewerEnvironment;
-import mezz.jei.gui.elements.GuiIconToggleButton;
+import mezz.jei.gui.elements.IconButton;
+import mezz.jei.common.input.IInputTarget;
 import mezz.jei.gui.input.GuiTextFieldFilter;
 import mezz.jei.gui.overlay.IngredientListOverlay;
 import net.minecraft.client.Minecraft;
@@ -19,9 +19,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = IngredientListOverlay.class, remap = false)
 public abstract class MixinIngredientListOverlay {
-	@Shadow private GuiIconToggleButton configButton;
+	@Shadow private IconButton configButton;
 	@Shadow private GuiTextFieldFilter searchField;
-	@Shadow public abstract boolean isListDisplayed();
+	@Shadow private boolean isSearchDisplayed() { throw new AssertionError(); }
 	@Unique private JeiIngredientListOverlayController cg$controller;
 
 	@Inject(
@@ -32,9 +32,8 @@ public abstract class MixinIngredientListOverlay {
 	private void cg$onInit(CallbackInfo ci) {
 		if (!ViewerLifecycleCoordinator.isJeiSelected()) return;
 		this.cg$controller = new JeiIngredientListOverlayController(
-			() -> ((MixinGuiIconToggleButtonAccessor) (Object) this.configButton).cg$getArea(), this.searchField,
-			() -> ((MixinGuiTextFieldFilterAccessor) (Object) this.searchField).cg$getArea(),
-			this::isListDisplayed, Services.CONFIG::showManagerButton);
+			this.configButton, this.searchField,
+			this::isSearchDisplayed, Services.CONFIG::showManagerButton);
 	}
 
 	@Inject(
@@ -70,18 +69,23 @@ public abstract class MixinIngredientListOverlay {
 	}
 
 	@Inject(
-		method = {
-			"createInputHandler()Lmezz/jei/gui/input/IUserInputHandler;",
-			"createInputHandler()Lmezz/jei/common/input/IUserInputHandler;"
-		},
+		method = "createInputHandler()Lmezz/jei/common/input/IInputTarget;",
 		at = @At("RETURN"),
 		cancellable = true,
 		require = 1,
 		allow = 1
 	)
-	private void cg$wrapInputHandler(CallbackInfoReturnable<Object> cir) {
+	private void cg$wrapInputHandler(CallbackInfoReturnable<IInputTarget> cir) {
 		if (!ViewerLifecycleCoordinator.isJeiSelected() || this.cg$controller == null) return;
-		cir.setReturnValue(this.cg$controller.wrapInputHandler(cir.getReturnValue(),
-			LoaderViewerEnvironment.detect().jeiVersion().detectedVersion()));
+		cir.setReturnValue(this.cg$controller.wrapInputHandler(cir.getReturnValue()));
+	}
+
+	@Inject(method = "containsMouse(DD)Z", at = @At("HEAD"),
+		cancellable = true, require = 1, allow = 1)
+	private void cg$includeGroupsButton(double mouseX, double mouseY, CallbackInfoReturnable<Boolean> cir) {
+		if (ViewerLifecycleCoordinator.isJeiSelected() && this.cg$controller != null
+			&& this.cg$controller.isMouseOver(mouseX, mouseY)) {
+			cir.setReturnValue(true);
+		}
 	}
 }

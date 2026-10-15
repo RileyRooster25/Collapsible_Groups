@@ -21,7 +21,7 @@ class LoaderIngredientListRendererMixinContractTest {
 			"collapsible_groups." + loader + ".mixins.json"));
 		String plugin = Files.readString(loaderRoot.resolve(PLUGIN_SOURCE));
 
-		for (String mixin : new String[]{"MixinIngredientListRenderer", "MixinIngredientListSlot", "MixinIngredientElement"}) {
+		for (String mixin : new String[]{"MixinIngredientListRenderer"}) {
 			assertTrue(mixinJson.contains("\"" + mixin + "\""), mixin);
 			assertTrue(plugin.contains("\"com.starskyxiii.collapsible_groups.mixin." + mixin + "\""), mixin);
 		}

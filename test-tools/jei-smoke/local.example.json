@@ -1,0 +1,8 @@
+{
+  "prism": "C:/path/to/PrismLauncher/prismlauncher.exe",
+  "prismData": "C:/path/to/PrismLauncher/data",
+  "java": "C:/path/to/jdk-17/bin/javaw.exe",
+  "instanceSuffix": "unique-run-name",
+  "forge": { "jei": "C:/path/to/jei-forge.jar" },
+  "fabric": { "jei": "C:/path/to/jei-fabric.jar", "api": "C:/path/to/fabric-api.jar" }
+}

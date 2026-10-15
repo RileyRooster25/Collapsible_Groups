@@ -8,15 +8,9 @@
   "mixins": [],
   "client": [
     "MixinBookmarkList",
-    "MixinFocusInputHandler",
-    "MixinElementInputHandler",
     "MixinIngredientFilter",
     "MixinIngredientListRenderer",
-    "MixinIngredientListSlot",
-    "MixinIngredientElement",
     "MixinIngredientListOverlay",
-    "MixinGuiTextFieldFilterAccessor",
-    "MixinGuiIconToggleButtonAccessor",
     "MixinEmiScreenSpace",
     "MixinEmiScreenManager",
     "MixinKubeJSScriptManager"

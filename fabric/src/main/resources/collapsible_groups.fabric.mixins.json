@@ -5,18 +5,14 @@
   "plugin": "com.starskyxiii.collapsible_groups.mixin.CollapsibleGroupsMixinPlugin",
   "refmap": "${mod_id}.refmap.json",
   "compatibilityLevel": "JAVA_17",
-  "mixins": ["MixinGroupResourcePackAccessor"],
+  "mixins": [
+    "MixinGroupResourcePackAccessor"
+  ],
   "client": [
     "MixinBookmarkList",
-    "MixinFocusInputHandler",
-    "MixinElementInputHandler",
     "MixinIngredientFilter",
     "MixinIngredientListRenderer",
-    "MixinIngredientListSlot",
-    "MixinIngredientElement",
     "MixinIngredientListOverlay",
-    "MixinGuiTextFieldFilterAccessor",
-    "MixinGuiIconToggleButtonAccessor",
     "MixinEmiScreenSpace",
     "MixinEmiScreenManager",
     "MixinKubeJSScriptManager"

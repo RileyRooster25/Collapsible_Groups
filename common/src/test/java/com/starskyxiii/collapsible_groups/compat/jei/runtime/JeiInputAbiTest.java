@@ -19,86 +19,38 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JeiInputAbiTest {
 	@Test
-	void packagedBookmarkHooksRequireExactlyOneCompatibleBranch() throws IOException {
+	void packagedHooksMatchLatestJeiAndInputTargetsExist() throws IOException {
 		for (String loader : List.of("forge", "fabric")) {
-			ClassNode bookmarks = readMixin(loader, "MixinBookmarkList");
-			List<MethodNode> hooks = bookmarks.methods.stream().filter(m -> m.visibleAnnotations != null
-				&& m.visibleAnnotations.stream().anyMatch(a -> a.desc.endsWith("/Inject;"))).toList();
-			assertEquals(2, hooks.size());
-			for (MethodNode hook : hooks) {
-				AnnotationNode group = hook.invisibleAnnotations.stream()
-					.filter(a -> a.desc.endsWith("/Group;")).findFirst().orElseThrow();
-				assertEquals("cg$blockGroupHeaderBookmarks", value(group, "name"));
-				assertEquals(1, value(group, "min"));
-				assertEquals(1, value(group, "max"));
-				AnnotationNode inject = hook.visibleAnnotations.stream()
-					.filter(a -> a.desc.endsWith("/Inject;")).findFirst().orElseThrow();
-				assertEquals(true, value(inject, "cancellable"));
-			}
-		}
-	}
-
-	@Test
-	void bookmarkAndElementClickHooksMatchTheSelectedNativeOwner() throws IOException {
-		for (String loader : List.of("forge", "fabric")) {
+			ClassNode mixin = readMixin(loader, "MixinIngredientListOverlay");
+			AnnotationNode input = method(mixin, "cg$wrapInputHandler").visibleAnnotations.stream()
+				.filter(a -> a.desc.endsWith("/Inject;")).findFirst().orElseThrow();
+			assertEquals(1, value(input, "require"));
+			assertEquals(1, value(input, "allow"));
 			ClassNode bookmarks = readMixin(loader, "MixinBookmarkList");
 			List<AnnotationNode> bookmarkHooks = bookmarks.methods.stream().filter(m -> m.visibleAnnotations != null)
 				.flatMap(m -> m.visibleAnnotations.stream()).filter(a -> a.desc.endsWith("/Inject;")).toList();
-			for (Path artifact : artifacts()) {
-				if (!artifact.getFileName().toString().contains("-" + loader + "-")) continue;
-				try (ZipFile jar = new ZipFile(artifact.toFile())) {
-					ClassNode target = read(jar, "mezz/jei/gui/bookmarks/BookmarkList");
-					long bookmarkMatches = bookmarkHooks.stream().mapToLong(hook -> target.methods.stream()
-						.filter(m -> ((List<?>) value(hook, "method")).contains(m.name + m.desc)).count()).sum();
-					assertEquals(1, bookmarkMatches, artifact.toString());
-					String owner = JeiInputMixinTargets.select(true,
-						name -> jar.getEntry(name.replace('.', '/') + ".class") != null, artifact.toString());
-					String mixin = owner.equals(JeiInputMixinTargets.CURRENT) ? "MixinElementInputHandler" : "MixinFocusInputHandler";
-					ClassNode inputMixin = readMixin(loader, mixin);
-					AnnotationNode redirect = method(inputMixin, "cg$handleElementClick").visibleAnnotations.stream()
-						.filter(a -> a.desc.endsWith("/Redirect;")).findFirst().orElseThrow();
-					assertEquals(1, value(redirect, "require"));
-					assertEquals(1, value(redirect, "allow"));
-					List<?> selectors = (List<?>) value(redirect, "method");
-					String invoke = (String) value((AnnotationNode) value(redirect, "at"), "target");
-					long matches = read(jar, owner.replace('.', '/')).methods.stream()
-						.filter(m -> selectors.contains(m.name) || selectors.contains(m.name + m.desc))
-						.flatMap(m -> Arrays.stream(m.instructions.toArray()))
-						.filter(i -> i instanceof MethodInsnNode call && invoke.equals("L" + call.owner + ";" + call.name + call.desc)).count();
-					assertEquals(1, matches, artifact.toString());
-				}
-			}
-		}
-	}
-
-	@Test
-	void overlayInjectionAndNativeWrappersMatchEverySupportedAbi() throws IOException {
-		for (String loader : List.of("forge", "fabric")) {
-			ClassNode mixin = readMixin(loader, "MixinIngredientListOverlay");
-			MethodNode callback = method(mixin, "cg$wrapInputHandler");
-			AnnotationNode inject = callback.visibleAnnotations.stream()
-				.filter(a -> a.desc.endsWith("/Inject;")).findFirst().orElseThrow();
-			assertEquals(1, value(inject, "require"));
-			assertEquals(1, value(inject, "allow"));
-			List<?> selectors = (List<?>) value(inject, "method");
+			assertEquals(1, bookmarkHooks.size());
 			for (Path artifact : artifacts()) {
 				if (!artifact.getFileName().toString().contains("-" + loader + "-")) continue;
 				try (ZipFile jar = new ZipFile(artifact.toFile())) {
 					ClassNode overlay = read(jar, "mezz/jei/gui/overlay/IngredientListOverlay");
-					assertEquals(1, overlay.methods.stream().filter(m -> selectors.contains(m.name + m.desc)).count(),
-						artifact.toString());
-					String handler = Type.getReturnType(method(overlay, "createInputHandler").desc).getInternalName();
-					ClassNode button = read(jar, "mezz/jei/gui/elements/GuiIconButton");
-					assertEquals("()L" + handler + ";", method(button, "createInputHandler").desc);
-					String combined = handler.substring(0, handler.lastIndexOf('/')) + "/handlers/CombinedInputHandler";
-					ClassNode combinedType = read(jar, combined);
-					assertTrue(combinedType.interfaces.contains(handler));
-					assertTrue(combinedType.methods.stream().anyMatch(m -> m.name.equals("<init>")
-						&& m.desc.equals("(Ljava/lang/String;Ljava/util/List;)V")));
-					ClassNode proxy = read(jar, "mezz/jei/gui/input/handlers/ProxyInputHandler");
-					assertTrue(proxy.interfaces.contains(handler));
-					assertTrue(proxy.methods.stream().anyMatch(m -> m.name.equals("<init>")
-						&& m.desc.equals("(Ljava/util/function/Supplier;)V")));
+					assertEquals(1, overlay.methods.stream().filter(m -> ((List<?>) value(input, "method")).contains(m.name + m.desc)).count());
+					assertEquals("()Z", method(overlay, "isSearchDisplayed").desc);
+					AnnotationNode mouseOver = method(mixin, "cg$includeGroupsButton").visibleAnnotations.stream()
+						.filter(a -> a.desc.endsWith("/Inject;")).findFirst().orElseThrow();
+					assertEquals(1, overlay.methods.stream().filter(m -> ((List<?>) value(mouseOver, "method")).contains(m.name + m.desc)).count(), "Packaged hitbox injection must resolve on " + loader);
+					MethodNode hitbox = method(read(jar, "mezz/jei/common/input/IMouseOverable"), "containsMouse");
+					assertEquals(hitbox.desc, method(read(jar, "mezz/jei/gui/input/handlers/SearchInputLayer"), hitbox.name).desc, "Packaged search input must implement the JEI hitbox interface");
+					ClassNode target = read(jar, "mezz/jei/gui/bookmarks/BookmarkList");
+					assertEquals(1, target.methods.stream().filter(m -> ((List<?>) value(bookmarkHooks.get(0), "method")).contains(m.name + m.desc)).count());
+					ClassNode button = read(jar, "mezz/jei/gui/elements/IconButton");
+					assertEquals("()Lmezz/jei/common/input/IInputTarget;", method(button, "createInputHandler").desc);
+					assertEquals("(Lmezz/jei/common/input/UserInput;Lmezz/jei/common/input/IInternalKeyMappings;)Ljava/util/Optional;",
+						method(read(jar, "mezz/jei/gui/overlay/elements/IElement"), "prepareAction").desc);
+					ClassNode group = read(jar, "mezz/jei/common/input/handlers/InputGroup");
+					assertTrue(group.interfaces.contains("mezz/jei/common/input/IInputTarget"));
+					assertTrue(group.methods.stream().anyMatch(m -> m.name.equals("<init>") && m.desc.equals(
+						"(Ljava/lang/String;[Lmezz/jei/common/input/handlers/InputGroup$Child;)V")));
 				}
 			}
 		}
@@ -109,7 +61,7 @@ class JeiInputAbiTest {
 		assertNotNull(paths);
 		List<Path> artifacts = Arrays.stream(paths.split(java.util.regex.Pattern.quote(File.pathSeparator)))
 			.map(Path::of).toList();
-		assertEquals(10, artifacts.size());
+		assertEquals(2, artifacts.size());
 		return artifacts;
 	}
 

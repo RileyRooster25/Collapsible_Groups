@@ -1,0 +1,14 @@
+plugins { id 'java'; id 'net.neoforged.moddev.legacyforge' }
+base.archivesName='cg-jei-smoke-1.20.1-forge'
+legacyForge { enable { forgeVersion='1.20.1-47.4.10' }; mods { cgsmoke { sourceSet sourceSets.main } } }
+sourceSets.main.java.srcDir '../src/main/java'
+sourceSets.main.resources.srcDir '../src/main/resources'
+dependencies {
+ annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+ modCompileOnly("mezz.jei:jei-1.20.1-forge:${rootProject.cgProperties.jei_version}") {transitive=false}
+ compileOnly files("../../../forge/build/libs/collapsible_groups-forge-1.20.1-${rootProject.cgProperties.version}.jar")
+}
+mixin { add sourceSets.main, 'cgsmoke.refmap.json'; config('cgsmoke.mixins.json') }
+jar { manifest { attributes['MixinConfigs']='cgsmoke.mixins.json' } }
+java.toolchain.languageVersion=JavaLanguageVersion.of(17)
+tasks.withType(JavaCompile).configureEach {options.encoding='UTF-8';options.release=17}
