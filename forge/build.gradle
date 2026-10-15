@@ -1,111 +1,46 @@
-buildscript {
-    repositories {
-        maven {
-            url = 'https://maven.minecraftforge.net'
-        }
-        maven {
-            url = 'https://repo.spongepowered.org/repository/maven-public/'
-            content {
-                includeGroup 'org.spongepowered'
-            }
-        }
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:6.0.26'
-        classpath 'org.spongepowered:mixingradle:0.7.38'
-    }
-}
-
 plugins {
     id 'multiloader-loader'
+    id 'net.minecraftforge.gradle' version '7.0.40'
 }
 
-apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'org.spongepowered.mixin'
+minecraft.mavenizer(repositories)
 repositories {
-    mavenLocal {
-        content { includeGroup 'dev.emi' }
-    }
-    maven {
-        name = 'TerraformersMC'
-        url = 'https://maven.terraformersmc.com/'
-    }
+    mavenLocal { content { includeGroup 'dev.emi' } }
+    maven { url = 'https://maven.terraformersmc.com/' }
+    maven { url = 'https://libraries.minecraft.net' }
+    maven { url = 'https://maven.minecraftforge.net' }
 }
-base {
-    archivesName = "${mod_id}-forge-${minecraft_version}"
-}
-mixin {
-    add sourceSets.main, "${mod_id}.refmap.json"
-    config("${mod_id}.mixins.json")
-    config("${mod_id}.forge.mixins.json")
-}
+
+base { archivesName = "${mod_id}-forge-${minecraft_version}" }
 jar {
-    manifest {
-        attributes["MixinConfigs"] = "${mod_id}.mixins.json,${mod_id}.forge.mixins.json"
-    }
+    manifest { attributes['MixinConfigs'] = "${mod_id}.mixins.json,${mod_id}.forge.mixins.json" }
 }
 
+// Forge 1.21.1 uses official names at runtime; no reobfuscation or refmap is needed.
 minecraft {
-    mappings channel: 'official', version: minecraft_version
-
-    copyIdeResources = true //Calls processResources when in dev
-
-    reobf = false // Forge 1.20.6+ uses official mappings at runtime, so we shouldn't reobf from official to SRG
-
-    // Automatically enable forge AccessTransformers if the file exists
-    // This location is hardcoded in Forge and can not be changed.
-    // https://github.com/MinecraftForge/MinecraftForge/blob/be1698bb1554f9c8fa2f58e32b9ab70bc4385e60/fmlloader/src/main/java/net/minecraftforge/fml/loading/moddiscovery/ModFile.java#L123
-    // Forge still uses SRG names during compile time, so we cannot use the common AT's
+    mappings('official', minecraft_version)
     def at = file('src/main/resources/META-INF/accesstransformer.cfg')
-    if (at.exists()) {
-        accessTransformer = at
-    }
-
+    if (at.exists()) accessTransformers.from(at)
     runs {
-        client {
-            workingDirectory file('runs/client')
-            ideaModule "${rootProject.name}.${project.name}.main"
-            taskName 'Client'
-            mods {
-                modClientRun {
-                    source sourceSets.main
-                }
-            }
+        configureEach {
+            mods { create(mod_id) { source(sourceSets.main) } }
         }
-
-        server {
-            workingDirectory file('runs/server')
-            ideaModule "${rootProject.name}.${project.name}.main"
-            taskName 'Server'
-            mods {
-                modServerRun {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        data {
-            workingDirectory file('runs/data')
-            ideaModule "${rootProject.name}.${project.name}.main"
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-            taskName 'Data'
-            mods {
-                modDataRun {
-                    source sourceSets.main
-                }
-            }
+        create('client') { workingDir = layout.projectDirectory.dir('runs/client') }
+        create('server') { workingDir = layout.projectDirectory.dir('runs/server') }
+        create('data') {
+            workingDir = layout.projectDirectory.dir('runs/data')
+            args('--mod', mod_id, '--all', '--output', file('src/generated/resources').absolutePath,
+                '--existing', file('src/main/resources').absolutePath)
         }
     }
 }
-
 sourceSets.main.resources.srcDir 'src/generated/resources'
 
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    annotationProcessor("org.spongepowered:mixin:0.8.7:processor")
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.1'
+    implementation(minecraft.dependency("net.minecraftforge:forge:${minecraft_version}-${forge_version}"))
     compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
     // JEI Forge API — public API surface (mezz.jei.api.*)
     compileOnly "mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"
@@ -123,21 +58,4 @@ sourceSets.test {
     compileClasspath += sourceSets.main.compileClasspath
     runtimeClasspath += sourceSets.main.compileClasspath
 }
-
-test {
-    useJUnitPlatform()
-}
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            fg.component(it)
-        }
-    }
-}
-
-sourceSets.each {
-    def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
-    it.output.resourcesDir = dir
-    it.java.destinationDirectory = dir
-}
+test { useJUnitPlatform() }

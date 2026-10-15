@@ -2,15 +2,15 @@
 
 獨立遊戲測試工具，使用 Prism 啟動實際發布 jar。ClientDevBridge 提供通訊、世界操作與截圖；probe 提供原生輸入與繪製後的唯讀觀察。產品的 Gradle 與發布 jar 不包含 Bridge 或 probe。
 
-本分支受測範圍是 Minecraft 1.21.1、CG 2.0.0-beta3、NeoForge 21.1.249 的純 JEI／純 EMI。實作與失敗修正見 [beta 回歸紀錄](../../docs/bridge-beta-regression-20260930.md)，完成結果見 [RESULTS.md](RESULTS.md)。其他保留的 profile／案例尚未完成 beta 適配驗證。
+本分支受測範圍是 Minecraft 1.21.1、CG 2.0.0-beta4、NeoForge 21.1.249 的純 JEI／純 EMI。實作與失敗修正見 [beta 回歸紀錄](../../docs/bridge-beta-regression-20260930.md)，完成結果見 [RESULTS.md](RESULTS.md)。其他保留的 profile／案例尚未完成 beta 適配驗證。
 
 ## 環境與準備
 
-需要 Windows、Node.js 22+、JDK 21，以及已登入並可啟動 Minecraft 的 Prism Launcher。畫面固定 1280 × 800、GUI scale 2、60 FPS、en_us；拖曳時遊戲需保持焦點。Bridge 1.0.0 build 171、JEI 19.42.0.379、EMI 1.1.24 的完整版本與 SHA 位於 dependencies.json。
+需要 Windows、Node.js 22+、JDK 21，以及已登入並可啟動 Minecraft 的 Prism Launcher。畫面固定 1280 × 800、GUI scale 2、60 FPS、en_us；拖曳時遊戲需保持焦點。Bridge 1.0.0 build 171、JEI 19.64.0.454、EMI 1.1.24 的完整版本與 SHA 位於 dependencies.json。
 
 1. 複製 local.example.json 為 local.json，填入 Prism、Java 21 與 NeoForge 21.1.249 的 mmc-pack.json 路徑。只讀取 pack 版本，不複製個人世界、mods 或設定。
 2. 將鎖定的 NeoForge Bridge、JEI、EMI jar 放入 companion/libs。也可透過 local.json 的 dependencyFiles 指定來源；stage 會核對 SHA。
-3. 在本資料夾執行以下準備。JAVA_HOME 指向 JDK 21；不需要 npm install。
+3. 在本資料夾執行以下準備。JAVA_HOME 指向 JDK 25（遊戲仍使用 Java 21）；不需要 npm install。
 
 ```powershell
 ../../gradlew.bat :common:test :neoforge:jar
@@ -48,3 +48,7 @@ node runner/audit-evidence.mjs neo-jei neo-emi
 ## 來源
 
 通訊與世界控制沿用 [ClientDevBridge](https://github.com/CyclopsMC/ClientDevBridge)，研究基準 c8f60830079b7e80272c953985da4674fd3595ab。CG 的輸入、觀察、案例與還原由本工具實作。
+
+### Focused JEI compatibility smoke check
+
+Run `node runner/run.mjs neo-jei --jei-smoke` to check native clicks, expand/collapse, manager entry with empty search results, and search/clear behavior. This mode runs 14 checks, saves screenshots, skips drag operations and cold restart, and restores fixtures after normal shutdown. It does not replace the full suite.

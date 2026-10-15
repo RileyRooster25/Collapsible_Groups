@@ -7,11 +7,9 @@
   "mixins": [],
   "client": [
     "MixinBookmarkList",
-    "MixinJeiElement",
     "MixinIngredientFilter",
     "MixinIngredientListRenderer",
-    "MixinIngredientListOverlay",
-    "MixinGuiTextFieldFilterAccessor"
+    "MixinIngredientListOverlay"
   ],
   "server": [],
   "injectors": {

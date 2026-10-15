@@ -26,7 +26,7 @@ class JeiOverlayRenderContractTest {
 			"(Lnet/minecraft/client/gui/GuiGraphics;)V"
 		);
 		assertProductionCall(
-			"drawOverlayForegrounds",
+			"drawOverlayContents",
 			"drawForeground",
 			"(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/gui/GuiGraphics;IIF)V"
 		);

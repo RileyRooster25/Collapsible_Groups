@@ -41,10 +41,11 @@
     },
     "fabric_jei": {
       "loader": "fabric",
-      "sha256": "90d74859fd7e32f3b2d6d4e3c02cc556642278e46d303c0d8ca508ddef467347",
-      "version": "19.42.0.379",
+      "sha256": "e93bd27369ed7513a21931f66d4718ba227873ebdd6320ffad2f35ed3670e07a",
+      "version": "19.64.0.454",
       "modId": "jei",
-      "file": "jei-1.21.1-fabric-19.42.0.379.jar"
+      "file": "jei-1.21.1-fabric-19.64.0.454.jar",
+      "url": "https://maven.blamejared.com/mezz/jei/jei-1.21.1-fabric/19.64.0.454/jei-1.21.1-fabric-19.64.0.454.jar"
     },
     "toomanyrecipeviewers": {
       "sha256": "f9e4ad2912bb67ce5a22aab2d9b07b5babeda476ab9b233bb494782bd7c020fa",
@@ -72,9 +73,10 @@
       "sha256": "b68691f94f0727fc517cac2ab55bd6658d1179cc8cc715fe610b60c37469bc4c"
     },
     "jei": {
-      "file": "jei-1.21.1-neoforge-19.42.0.379.jar",
-      "version": "19.42.0.379",
-      "sha256": "a58bf909819d5b7e5264e7be6d7c1a27b5de35e0611c80f382de086dddbb1a23"
+      "file": "jei-1.21.1-neoforge-19.64.0.454.jar",
+      "version": "19.64.0.454",
+      "sha256": "a3bff17187be70220c6d6c6f5d7f3571fcf4b9c0fe550708c8c8c0bab324e934",
+      "url": "https://maven.blamejared.com/mezz/jei/jei-1.21.1-neoforge/19.64.0.454/jei-1.21.1-neoforge-19.64.0.454.jar"
     }
   }
 }

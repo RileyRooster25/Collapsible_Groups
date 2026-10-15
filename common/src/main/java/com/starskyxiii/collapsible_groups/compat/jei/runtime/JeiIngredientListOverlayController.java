@@ -6,11 +6,11 @@ import com.starskyxiii.collapsible_groups.compat.jei.ui.GroupBorderRenderer;
 import com.starskyxiii.collapsible_groups.viewer.ViewerOverlayHook;
 import mezz.jei.common.util.ImmutableRect2i;
 import mezz.jei.gui.elements.IconButton;
+import mezz.jei.common.input.IInputTarget;
 import mezz.jei.gui.input.GuiTextFieldFilter;
 import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 
 /** Shared render-phase, layout, and input behavior behind the loader overlay mixins. */
 public final class JeiIngredientListOverlayController {
@@ -18,23 +18,21 @@ public final class JeiIngredientListOverlayController {
 
 	private final IconButton configButton;
 	private final GuiTextFieldFilter searchField;
-	private final Supplier<ImmutableRect2i> searchArea;
-	private final BooleanSupplier listDisplayed;
+	private final BooleanSupplier searchDisplayed;
 	private final BooleanSupplier configuredVisible;
 	private final IconButton groupsButton = new IconButton(new GroupsButtonController());
 
 	public JeiIngredientListOverlayController(IconButton configButton, GuiTextFieldFilter searchField,
-		Supplier<ImmutableRect2i> searchArea, BooleanSupplier listDisplayed, BooleanSupplier configuredVisible) {
+		BooleanSupplier searchDisplayed, BooleanSupplier configuredVisible) {
 		this.configButton = configButton;
 		this.searchField = searchField;
-		this.searchArea = searchArea;
-		this.listDisplayed = listDisplayed;
+		this.searchDisplayed = searchDisplayed;
 		this.configuredVisible = configuredVisible;
 	}
 
 	public void drawBackgroundPhase(GuiGraphics graphics) {
 		GroupBorderRenderer.clear();
-		if (!listDisplayed.getAsBoolean()) return;
+		if (!searchDisplayed.getAsBoolean()) return;
 		syncBoundsToConfigButton(shouldShowGroupsButton());
 	}
 
@@ -47,14 +45,18 @@ public final class JeiIngredientListOverlayController {
 		if (shouldShowGroupsButton()) groupsButton.drawTooltips(graphics, mouseX, mouseY);
 	}
 
-	public Object wrapInputHandler(Object original, String jeiVersion) {
-		return JeiInputHandlerAdapter.wrap(groupsButton, original, this::shouldShowGroupsButton, jeiVersion);
+	public IInputTarget wrapInputHandler(IInputTarget original) {
+		return JeiInputHandlerAdapter.wrap(groupsButton.createInputHandler(), original, this::shouldShowGroupsButton);
+	}
+
+	public boolean isMouseOver(double mouseX, double mouseY) {
+		return shouldShowGroupsButton() && groupsButton.isMouseOver(mouseX, mouseY);
 	}
 
 	private void syncBoundsToConfigButton(boolean showGroupsButton) {
 		ImmutableRect2i configArea = configButton.getArea();
 		if (configArea == null || configArea.isEmpty()) return;
-		ImmutableRect2i currentSearchArea = searchArea.get();
+		ImmutableRect2i currentSearchArea = searchField.getArea();
 		if (currentSearchArea == null || currentSearchArea.isEmpty()) return;
 
 		ViewerOverlayHook.Bounds buttonBounds = new ViewerOverlayHook.Bounds(
@@ -76,6 +78,6 @@ public final class JeiIngredientListOverlayController {
 
 	private boolean shouldShowGroupsButton() {
 		return JeiViewerAdapter.instance().overlayHook().shouldShowButton(
-			configuredVisible.getAsBoolean(), listDisplayed.getAsBoolean());
+			configuredVisible.getAsBoolean(), searchDisplayed.getAsBoolean());
 	}
 }
