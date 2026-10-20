@@ -33,7 +33,7 @@ class LoaderOverlayMixinContractTest {
 				"method = \"drawTooltips(Lnet/minecraft/client/Minecraft;" +
 					"Lnet/minecraft/client/gui/GuiGraphics;II)V\""));
 		}
-		assertTrue(source.contains("createInputHandler()Lmezz/jei/common/input/IInputTarget;"));
+		assertTrue(source.contains("createInputHandler(Lmezz/jei/common/input/IInternalKeyMappings;)Lmezz/jei/common/input/IInputTarget;"));
 		assertTrue(source.contains("CallbackInfoReturnable<IInputTarget>"));
 		assertTrue(source.contains("isMouseOver(DD)Z"));
 		assertTrue(source.contains("this::isSearchDisplayed"));

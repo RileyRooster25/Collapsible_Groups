@@ -56,6 +56,16 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.1'
     testImplementation 'com.google.code.gson:gson:2.10.1'
     testImplementation 'org.ow2.asm:asm:9.7.1'
+    testImplementation 'org.ow2.asm:asm-tree:9.7.1'
+}
+
+def jeiAbiArtifacts = ['fabric', 'forge', 'neoforge'].collectEntries { loader ->
+    def artifact = configurations.create("jeiAbi_${loader}") {
+        canBeConsumed = false
+        transitive = false
+    }
+    dependencies.add(artifact.name, "mezz.jei:jei-${minecraft_version}-${loader}:${jei_version}")
+    [(loader): artifact]
 }
 
 sourceSets {
@@ -110,8 +120,21 @@ tasks.named('check') {
 }
 
 test {
+    dependsOn ':fabric:remapJar', ':forge:jar', ':neoforge:jar'
     useJUnitPlatform()
     systemProperty 'collapsibleGroupsRoot', rootProject.projectDir.absolutePath
+    inputs.files(jeiAbiArtifacts.values())
+    inputs.files {
+        ['fabric': 'remapJar', 'forge': 'jar', 'neoforge': 'jar'].collect { loader, jarTask ->
+            project(":${loader}").tasks.named(jarTask).get().archiveFile.get().asFile
+        }
+    }
+    doFirst {
+        ['fabric': 'remapJar', 'forge': 'jar', 'neoforge': 'jar'].each { loader, jarTask ->
+            systemProperty "jeiAbi.${loader}.jei", jeiAbiArtifacts[loader].singleFile.absolutePath
+            systemProperty "jeiAbi.${loader}.mod", project(":${loader}").tasks.named(jarTask).get().archiveFile.get().asFile.absolutePath
+        }
+    }
 }
 
 configurations {
