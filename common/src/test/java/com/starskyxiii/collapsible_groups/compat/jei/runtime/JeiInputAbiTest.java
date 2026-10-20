@@ -19,6 +19,29 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JeiInputAbiTest {
 	@Test
+	void forgeSearchInterfaceBridgesReachThePackagedJeiOverrides() throws IOException {
+		ClassNode bridge = readMixin("forge", "MixinGuiTextFieldFilter");
+		Path artifact = artifacts().stream().filter(p -> p.getFileName().toString().contains("-forge-")).findFirst().orElseThrow();
+		try (ZipFile jar = new ZipFile(artifact.toFile())) {
+			ClassNode contract = read(jar, "mezz/jei/gui/overlay/ISearchField");
+			ClassNode implementation = read(jar, "mezz/jei/gui/input/GuiTextFieldFilter");
+			for (MethodNode required : contract.methods) {
+				if (implementation.methods.stream().anyMatch(m -> m.name.equals(required.name) && m.desc.equals(required.desc))) continue;
+				MethodNode proxy = method(bridge, "cg$" + required.name);
+				assertEquals(required.desc, proxy.desc);
+				assertTrue(proxy.invisibleAnnotations.stream().anyMatch(a -> a.desc.endsWith("/Intrinsic;")), "Existing JEI implementations must be preserved");
+				List<MethodInsnNode> calls = Arrays.stream(proxy.instructions.toArray())
+					.filter(MethodInsnNode.class::isInstance).map(MethodInsnNode.class::cast).toList();
+				assertEquals(1, calls.size());
+				MethodInsnNode call = calls.get(0);
+				assertEquals("net/minecraft/client/gui/components/EditBox", call.owner);
+				assertNotEquals(required.name, call.name, "Forge bridge must call the remapped override, not itself");
+				assertTrue(implementation.methods.stream().anyMatch(m -> m.name.equals(call.name) && m.desc.equals(call.desc)), "Bridge must preserve JEI's search colors and focus handling");
+			}
+		}
+	}
+
+	@Test
 	void packagedHooksMatchLatestJeiAndInputTargetsExist() throws IOException {
 		for (String loader : List.of("forge", "fabric")) {
 			ClassNode mixin = readMixin(loader, "MixinIngredientListOverlay");

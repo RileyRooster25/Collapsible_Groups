@@ -11,6 +11,7 @@
     "MixinIngredientFilter",
     "MixinIngredientListRenderer",
     "MixinIngredientListOverlay",
+    "MixinGuiTextFieldFilter",
     "MixinEmiScreenSpace",
     "MixinEmiScreenManager",
     "MixinKubeJSScriptManager"

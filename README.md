@@ -6,7 +6,7 @@ Use built-in groups or create your own with the in-game editor, JSON files, reso
 
 Supports JEI and EMI on Fabric and Forge.
 
-**Compatibility:** Requires Java 17. JEI integration requires JEI 15.71.0.223 or newer; older JEI versions are no longer supported. EMI 1.1.24+1.20.1 or newer remains supported. Use Forge 47.4.10+, or Fabric Loader 0.19.5+ with Fabric API 0.92.11+1.20.1 or newer.
+**Compatibility:** Requires Java 17. JEI integration requires JEI 15.74.0.225 or newer; older JEI versions are no longer supported. EMI 1.1.24+1.20.1 or newer remains supported. Use Forge 47.4.10+, or Fabric Loader 0.19.5+ with Fabric API 0.92.11+1.20.1 or newer.
 
 ## Build requirements
 

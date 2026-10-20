@@ -69,7 +69,7 @@ public abstract class MixinIngredientListOverlay {
 	}
 
 	@Inject(
-		method = "createInputHandler()Lmezz/jei/common/input/IInputTarget;",
+		method = "createInputHandler(Lmezz/jei/common/input/IInternalKeyMappings;)Lmezz/jei/common/input/IInputTarget;",
 		at = @At("RETURN"),
 		cancellable = true,
 		require = 1,
