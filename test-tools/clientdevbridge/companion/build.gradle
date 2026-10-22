@@ -7,3 +7,14 @@ repositories { mavenCentral() }
 dependencies { compileOnly fileTree('libs') { include '*.jar' } }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
+
+// Keep the probe's exact product dependency in sync with the checkout being tested.
+def cgProperties = new Properties()
+file('../../../gradle.properties').withInputStream { cgProperties.load(it) }
+def cgVersion = cgProperties.getProperty('version')
+tasks.named('processResources') {
+ inputs.property('cgVersion', cgVersion)
+ filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml']) {
+  filter { line -> line.replace('@CG_VERSION@', cgVersion) }
+ }
+}

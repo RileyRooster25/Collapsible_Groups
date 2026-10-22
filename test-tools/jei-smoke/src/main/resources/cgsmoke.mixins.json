@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.starskyxiii.cgsmoke.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "TickMixin",
+    "FrameMixin",
+    "MouseAccess",
+    "KeyboardAccess",
+    "JeiGridMixin",
+    "JeiButtonMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

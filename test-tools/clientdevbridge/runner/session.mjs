@@ -58,10 +58,12 @@ export async function launch(id) {
   const manifest=await readJson(profilePath(id)),local=await readJson(path.join(root,'local.json'));
   await owned(manifest);
   assert.equal(await occupied(manifest.port),false,'Profile port already occupied; refusing another launch');
-  const child=spawn(local.prism,['--launch',manifest.instance],{windowsHide:true,detached:true,stdio:'ignore'});
+  const child=spawn(local.prism,['--dir',local.prismData,'--launch',manifest.instance],{windowsHide:true,detached:false,stdio:'ignore'});
   await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});child.unref();
+  let launcherError;child.once('exit',(code,signal)=>{if(code!==0)launcherError=Error('Configured launcher failed: '+(signal??code));});
   const deadline=Date.now()+150000;
   while(Date.now()<deadline) {
+    if(launcherError)throw launcherError;
     if(await occupied(manifest.port)) return connect(id);
     await sleep(1200);
   }

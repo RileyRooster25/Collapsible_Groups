@@ -1,0 +1,4 @@
+plugins { id 'net.minecraftforge.gradle' version '7.0.40' apply false }
+subprojects { group='com.starskyxiii'; version='0.1.0'; repositories { mavenCentral(); maven { url='https://maven.blamejared.com' } } }
+ext.cgProperties=new Properties()
+file('../../gradle.properties').withInputStream {cgProperties.load(it)}

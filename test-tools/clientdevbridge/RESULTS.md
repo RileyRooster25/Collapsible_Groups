@@ -23,3 +23,7 @@
 未修正 beta 曾在 invalid-rule-retains-last-valid-preview 重現物品預覽遺失；修正後在兩個 viewer 通過。失敗、修正與產物雜湊詳見 [實作紀錄](../../docs/bridge-beta-regression-20260930.md)。
 
 本次範圍不含 Fabric／Forge 的 beta 遊戲實跑，也不含 KubeJS／generic／中文矩陣及效能測量。1.5.0 的先前結果不能代替 beta 驗證。重跑方式見 [README.md](README.md)。
+
+## Historical scope
+
+The results above apply to the dated beta3 artifacts and pinned dependencies only. They do not certify the current checkout, beta5, or the updated JEI pins. Use the README to generate new evidence for the exact deployed artifacts.

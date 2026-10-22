@@ -20,5 +20,5 @@ side="CLIENT"
 [[dependencies.cgbridgeprobe]]
 modId="collapsible_groups"
 type="required"
-versionRange="[2.0.0-beta3]"
+versionRange="[@CG_VERSION@]"
 side="CLIENT"

@@ -1,29 +1,69 @@
-# ClientDevBridge beta 回歸
+# ClientDevBridge tests for Minecraft 1.21.1
 
-獨立遊戲測試工具，使用 Prism 啟動實際發布 jar。ClientDevBridge 提供通訊、世界操作與截圖；probe 提供原生輸入與繪製後的唯讀觀察。產品的 Gradle 與發布 jar 不包含 Bridge 或 probe。
+Run Collapsible Groups in isolated Prism instances and check its UI, saved groups, and behavior after restarting. ClientDevBridge supplies communication, world operations and screenshots; the companion probe supplies native input and observations after rendering. Neither is included in release JARs.
 
-本分支受測範圍是 Minecraft 1.21.1、CG 2.0.0-beta4、NeoForge 21.1.249 的純 JEI／純 EMI。實作與失敗修正見 [beta 回歸紀錄](../../docs/bridge-beta-regression-20260930.md)，完成結果見 [RESULTS.md](RESULTS.md)。其他保留的 profile／案例尚未完成 beta 適配驗證。
+Start with the two NeoForge core profiles, neo-jei and neo-emi. [RESULTS.md](RESULTS.md) contains historical evidence; setup instructions do not imply a current beta5 game-test pass.
 
-## 環境與準備
+## Before you start
 
-需要 Windows、Node.js 22+、JDK 21，以及已登入並可啟動 Minecraft 的 Prism Launcher。畫面固定 1280 × 800、GUI scale 2、60 FPS、en_us；拖曳時遊戲需保持焦點。Bridge 1.0.0 build 171、JEI 19.64.0.454、EMI 1.1.24 的完整版本與 SHA 位於 dependencies.json。
+You need Windows, Node.js 22 or newer, JDK 25 for Gradle, Java 21 for Minecraft, and Prism Launcher with a signed-in account. No npm packages need to be installed.
 
-1. 複製 local.example.json 為 local.json，填入 Prism、Java 21 與 NeoForge 21.1.249 的 mmc-pack.json 路徑。只讀取 pack 版本，不複製個人世界、mods 或設定。
-2. 將鎖定的 NeoForge Bridge、JEI、EMI jar 放入 companion/libs。也可透過 local.json 的 dependencyFiles 指定來源；stage 會核對 SHA。
-3. 在本資料夾執行以下準備。JAVA_HOME 指向 JDK 25（遊戲仍使用 Java 21）；不需要 npm install。
+| Component | Version |
+| --- | --- |
+| Minecraft | 1.21.1 |
+| Collapsible Groups | The version in the root gradle.properties |
+| NeoForge | 21.1.249 |
+| ClientDevBridge | 1.0.0, build 171 |
+| JEI / EMI | 19.69.0.456 / 1.1.24+1.21.1 |
+
+Third-party JAR names and SHA-256 hashes are pinned in [dependencies.json](dependencies.json). Probe builds read the product version from gradle.properties and generate an exact dependency automatically.
+
+## 1. Configure your local paths
+
+Open PowerShell at the repository root:
 
 ```powershell
-../../gradlew.bat :common:test :neoforge:jar
+Set-Location test-tools/clientdevbridge
+$env:JAVA_HOME = 'C:/Path/To/jdk-25'
+```
+
+Run all remaining commands from this directory and stop if a command fails. Copy [local.example.json](local.example.json) to local.json once; edit an existing local.json instead of replacing it.
+
+| Field | What to enter |
+| --- | --- |
+| java | Java 21's bin/javaw.exe. |
+| prism | Your configured Prism launch executable. Keep machine-specific helper paths in local.json. |
+| prismData | The matching Prism data directory containing instances. |
+| packTemplate | The full path to this checkout's pack-template.json. |
+| instanceSuffix | A unique name suffix for a new set of instances. |
+| dependencyFiles | Paths to the pinned third-party JARs. |
+
+## 2. Build the mod and probes
+
+```powershell
+../../gradlew.bat -p ../.. :common:check :neoforge:build :fabric:build
 node runner/stage.mjs neo-jei neo-emi
 ../../gradlew.bat -p companion build
+```
+
+Supply the pinned Bridge, JEI and EMI files through dependencyFiles, or place them in companion/libs. stage checks their hashes and copies the current product JAR for probe compilation. This checkout has no fetch.mjs; supply the files before staging.
+
+The retained Fabric profiles use companion-fabric and its separate build command. They are outside the two-profile core run below.
+
+## 3. Create the test instances
+
+```powershell
 node runner/prepare.mjs neo-jei neo-emi
 ```
 
-若 Gradle 遇到 Unable to establish loopback connection，可設定 `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=D:/cg-bridge-no-socket`，該目錄刻意不存在以使用 TCP fallback。
+| Profile | Viewer | Port |
+| --- | --- | --- |
+| neo-jei | JEI | 25831 |
+| neo-emi | EMI | 25832 |
 
-prepare 建立獨立的 `CG Bridge Beta <profile> 20260930` 實例，使用 25831／25832 端口與所有權標記；同名實例已存在時拒絕覆蓋。產品版本及檔名讀取根目錄 gradle.properties；probe 的產品相依版本亦需同步。
+prepare creates owned CG Bridge Beta instances with your suffix and saves manifests under profiles/. It refuses existing names or occupied ports and does not copy personal worlds or settings. Use it once per instance.
 
-## 執行
+## 4. Run the core tests
 
 ```powershell
 node --test runner/*.test.mjs
@@ -31,24 +71,44 @@ node runner/run.mjs neo-jei neo-emi
 node runner/audit-evidence.mjs neo-jei neo-emi
 ```
 
-更新產品或 probe 後，重建、stage、重建 probe，再對已停止的實例執行 `node runner/deploy.mjs neo-jei neo-emi`。任一案例失敗即停止；執行結果或設定還原失敗皆回傳非零結束碼。
+Profiles run sequentially and include a cold restart. Keep the active game focused and avoid mouse or keyboard input. The instances use 1280 x 800, GUI scale 2, a 60 FPS limit, and en_us for image comparisons.
 
-每個 profile 包含 40 項核心／規則／生命週期檢查，以及 6 項 beta 批次操作、分類移動與冷啟動檢查。三張圖像基準檢查混合群組管理器、無效規則預覽、分類移動後的管理器。圖像只比較已檢視的文字與控制項區域，排除動畫圖示、游標與世界背景；不自動接受新的基準。
+Core cases cover editing, mixed members, native input, search, rules, ownership, batch operations, categories, invalid-rule previews and persistence. Image comparisons cover reviewed text and control regions, excluding animated icons, the cursor and world background. New baselines require manual review.
 
-## 證據與隔離
-
-- 身分核對包含 session、程序、gameDir、loader、Minecraft、模組版本、jar 路徑及 SHA。
-- 輸入走 MouseHandler／KeyboardHandler，修飾鍵在操作結束後釋放。觀察不呼叫 CG setter、重建索引或搜尋。
-- 通過判定需三個不同 frame 與 tick；畫面、搜尋或 generation 改變會重新等待。
-- 保存另外核對磁碟 JSON，退出後重新啟動檢查保存結果。
-- 測前備份 config/collapsiblegroups，分類 fixture 也在此範圍。正常退出並確認程序結束後按原位元組還原。
-- 無法確認退出時保留證據與備份，不任意終止 Java。恢復前需核對測試實例的 session、程序和端口。
-- evidence 保存快照、截圖、遊戲日誌、備份與退出結果。audit 採各 profile 最新的非負控制結果，不以舊成功掩蓋新失敗。
-
-## 來源
-
-通訊與世界控制沿用 [ClientDevBridge](https://github.com/CyclopsMC/ClientDevBridge)，研究基準 c8f60830079b7e80272c953985da4674fd3595ab。CG 的輸入、觀察、案例與還原由本工具實作。
+Each run saves reports, screenshots, logs and configuration backups under evidence/suite-<timestamp>/. audit uses each profile's latest non-negative-control run; an older pass cannot hide a newer failure. It verifies deployed hashes, normal exit and byte-for-byte configuration restoration.
 
 ### Focused JEI compatibility smoke check
 
-Run `node runner/run.mjs neo-jei --jei-smoke` to check native clicks, expand/collapse, manager entry with empty search results, and search/clear behavior. This mode runs 14 checks, saves screenshots, skips drag operations and cold restart, and restores fixtures after normal shutdown. It does not replace the full suite.
+```powershell
+node runner/run.mjs neo-jei --jei-smoke
+```
+
+This mode runs 14 native click, manager, search and clear checks, saves screenshots, skips drag operations and cold restart, and restores fixtures after normal shutdown. It does not replace the full suite. Forge has a separate [JEI smoke probe](../jei-smoke/README.md).
+
+## Rebuild and rerun
+
+After product or probe code changes, close the test clients, repeat step 2, then update the stopped instances:
+
+```powershell
+node runner/deploy.mjs neo-jei neo-emi
+node runner/run.mjs neo-jei neo-emi
+node runner/audit-evidence.mjs neo-jei neo-emi
+```
+
+deploy replaces the recorded product and probe artifacts and hashes. For a product version, loader or dependency change, finish pending recovery and prepare replacement instances with a fresh instanceSuffix. Preserve prior evidence; deploy does not migrate versioned filenames or dependency pins.
+
+## If something fails
+
+Read result.json and logs in the failed profile's evidence folder first. A failed check or failed restoration returns a nonzero exit status.
+
+If a client remains running after the runner stops, node runner/quit.mjs <profile> verifies its identity and requests normal shutdown. Do not stop shared Prism or unrelated Java processes. If restoration failed, run node runner/recover.mjs "evidence/<suite>/<profile>" only after verified shutdown. Keep backups if the process or port cannot be verified.
+
+For Gradle's Unable to establish loopback connection error, the local JAVA_TOOL_OPTIONS workaround can select TCP fallback with -Djdk.net.unixdomain.tmpdir pointing to an intentionally nonexistent directory. Do not create that directory or commit machine-specific paths.
+
+## Files and scope
+
+Keep local.json, generated profiles, dependency JARs, evidence and build outputs local. Commit test source, example configuration, dependency pins and reviewed baseline images.
+
+The two core profiles cover local single-player JEI and EMI testing on NeoForge. Retained Fabric, KubeJS, generic-provider, locale and coexistence profiles require their own current-version validation. These tests do not establish multiplayer, other-resolution or performance coverage. Historical results are not a beta5 certification.
+
+Communication and world operations use [ClientDevBridge](https://github.com/CyclopsMC/ClientDevBridge); its source revision and artifact identities are recorded in dependencies.json.

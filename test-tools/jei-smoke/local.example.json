@@ -1,0 +1,9 @@
+{
+  "prism": "<Prism executable>",
+  "prismData": "<Prism data directory>",
+  "java": "<Java 21 javaw.exe>",
+  "instanceSuffix": "<unique test suffix>",
+  "forge": {
+    "jei": "<JEI 1.21.1 Forge jar>"
+  }
+}

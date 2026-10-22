@@ -2,10 +2,10 @@
   "prism": "C:/path/to/prismlauncher.exe",
   "prismData": "C:/path/to/PrismLauncher",
   "java": "C:/path/to/jdk-21/bin/javaw.exe",
-  "packTemplate": "C:/path/to/a/1.21.1-NeoForge-21.1.249/mmc-pack.json",
+  "packTemplate": "C:/path/to/this-checkout/test-tools/clientdevbridge/pack-template.json",
   "dependencyFiles": {
     "clientdevbridge": "C:/path/to/clientdevbridge-1.21.1-neoforge-1.0.0-171.jar",
-    "jei": "C:/path/to/jei-1.21.1-neoforge-19.42.0.379.jar",
+    "jei": "C:/path/to/jei-1.21.1-neoforge-19.69.0.456.jar",
     "emi": "C:/path/to/emi--emi-1.1.24+1.21.1+neoforge.jar",
     "kubejs": "C:/path/to/kubejs-neoforge-2101.7.2-build.374.jar",
     "rhino": "C:/path/to/rhino-2101.2.8-build.91.jar",
@@ -13,8 +13,9 @@
     "toomanyrecipeviewers": "C:/path/to/toomanyrecipeviewers-0.9.0+mc.21.1.jar",
     "mekanism": "C:/path/to/Mekanism-1.21.1-10.7.19.85.jar",
     "fabric_bridge": "C:/path/to/clientdevbridge-1.21.1-fabric-1.0.0-171.jar",
-    "fabric_jei": "C:/path/to/jei-1.21.1-fabric-19.42.0.379.jar",
+    "fabric_jei": "C:/path/to/jei-1.21.1-fabric-19.69.0.456.jar",
     "fabric_emi": "C:/path/to/emi-fabric-1.1.24+1.21.1.jar",
     "fabric-api": "C:/path/to/fabric-api-0.116.17+1.21.1.jar"
-  }
+  },
+  "instanceSuffix": "unique-run-name"
 }
