@@ -44,7 +44,8 @@ public final class GroupIconRenderer implements IIngredientRenderer<GroupIcon> {
 		// --- Expand/collapse indicator ---
 		g.pose().pushMatrix();
 		try {
-			g.nextStratum();
+			// The extractor places overlapping text above the icons automatically.
+			// A separate stratum per header prevents neighbouring slots from batching.
 			g.text(Minecraft.getInstance().font,
 				icon.isExpanded() ? "-" : "+", posX + 10, posY + 9, 0xFFFFFFFF, true);
 		} finally {

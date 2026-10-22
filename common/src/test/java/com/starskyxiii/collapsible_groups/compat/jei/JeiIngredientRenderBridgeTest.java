@@ -70,6 +70,8 @@ class JeiIngredientRenderBridgeTest {
 			"GroupIconRenderer must keep its absolute-position render entry");
 		assertEquals(0, visitor.scissorCalls,
 			"GroupIconRenderer must let third-party renderers overflow their logical slot");
+		assertEquals(0, visitor.stratumCalls,
+			"header icons and indicators must use the extractor's automatic overlap ordering");
 	}
 
 	private static void readClass(String className, ClassVisitor visitor) throws IOException {
@@ -140,6 +142,7 @@ class JeiIngredientRenderBridgeTest {
 	private static final class GroupHeaderClipVisitor extends ClassVisitor {
 		private boolean absoluteRenderMethodFound;
 		private int scissorCalls;
+		private int stratumCalls;
 
 		private GroupHeaderClipVisitor() {
 			super(Opcodes.ASM9);
@@ -156,6 +159,7 @@ class JeiIngredientRenderBridgeTest {
 					boolean isInterface) {
 					if (!GUI_GRAPHICS.equals(owner)) return;
 					if ("enableScissor".equals(name) || "disableScissor".equals(name)) scissorCalls++;
+					if ("nextStratum".equals(name)) stratumCalls++;
 				}
 			};
 		}
