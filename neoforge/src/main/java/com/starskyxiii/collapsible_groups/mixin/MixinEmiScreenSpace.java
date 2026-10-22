@@ -28,11 +28,12 @@ public abstract class MixinEmiScreenSpace {
 	@Shadow public abstract int getY(int x, int y);
 	@Shadow @Final public int th;
 	@Unique private List<GroupSlotPosition> cg$groupPositions = List.of();
+	@Unique private final EmiProjectionController.Cache cg$projectionCache = new EmiProjectionController.Cache();
 
 	@Inject(method = "getStacks", at = @At("RETURN"), cancellable = true, require = 1)
 	private void cg$projectIndex(CallbackInfoReturnable<List<? extends EmiIngredient>> cir) {
 		if (!ViewerLifecycleCoordinator.isEmiSelected() || getType() != SidebarType.INDEX) return;
-		cir.setReturnValue(EmiProjectionController.project(cir.getReturnValue(), search));
+		cir.setReturnValue(EmiProjectionController.project(cg$projectionCache, cir.getReturnValue(), search));
 	}
 
 	@Inject(method = "render", at = @At(value = "INVOKE",

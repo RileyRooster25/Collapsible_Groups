@@ -28,6 +28,7 @@ public final class GroupHeaderEmiStack extends EmiStack {
 	private final ViewerProjection.GroupHeader<EmiIngredient> header;
 	private final GroupHeaderKey key;
 	private final ResourceLocation id;
+	private List<GroupPreviewEntry> previewEntries;
 
 	public GroupHeaderEmiStack(ViewerProjection.GroupHeader<EmiIngredient> header) {
 		this.header = header;
@@ -52,21 +53,29 @@ public final class GroupHeaderEmiStack extends EmiStack {
 		List<ViewerIngredient<EmiIngredient>> previews = header.fallbackIconIngredients();
 		int previewFlags = flags & ~EmiIngredient.RENDER_AMOUNT;
 		graphics.pose().pushPose();
-		graphics.pose().translate(x, y, 0);
-		graphics.pose().scale(0.9f, 0.9f, 1f);
-		if (previews.size() == 1) {
-			previews.get(0).entry().render(graphics, 1, 1, delta, previewFlags);
-		} else if (!previews.isEmpty()) {
-			previews.get(1).entry().render(graphics, 2, 0, delta, previewFlags);
-			graphics.pose().translate(0, 0, 10);
-			previews.get(0).entry().render(graphics, 0, 2, delta, previewFlags);
+		try {
+			graphics.pose().translate(x, y, 0);
+			graphics.pose().scale(0.9f, 0.9f, 1f);
+			if (!EmiHeaderItemBatch.tryRender(graphics, previews, previewFlags)) {
+				if (previews.size() == 1) {
+					previews.get(0).entry().render(graphics, 1, 1, delta, previewFlags);
+				} else if (!previews.isEmpty()) {
+					previews.get(1).entry().render(graphics, 2, 0, delta, previewFlags);
+					graphics.pose().translate(0, 0, 10);
+					previews.get(0).entry().render(graphics, 0, 2, delta, previewFlags);
+				}
+			}
+		} finally {
+			graphics.pose().popPose();
 		}
-		graphics.pose().popPose();
 		graphics.pose().pushPose();
-		graphics.pose().translate(0, 0, 200);
-		String marker = header.expanded() ? "-" : "+";
-		graphics.drawString(Minecraft.getInstance().font, marker, x + 10, y + 9, 0xffffffff, true);
-		graphics.pose().popPose();
+		try {
+			graphics.pose().translate(0, 0, 200);
+			String marker = header.expanded() ? "-" : "+";
+			graphics.drawString(Minecraft.getInstance().font, marker, x + 10, y + 9, 0xffffffff, true);
+		} finally {
+			graphics.pose().popPose();
+		}
 	}
 
 	@Override
@@ -96,9 +105,12 @@ public final class GroupHeaderEmiStack extends EmiStack {
 		return Component.translatable(key).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
 	}
 
-	private List<GroupPreviewEntry> previewEntries() {
-		return header.children().stream().map(child -> GroupPreviewEntry.ofRenderer((graphics, x, y) ->
-			child.entry().render(graphics, x, y, 0, EmiIngredient.RENDER_ICON))).toList();
+	List<GroupPreviewEntry> previewEntries() {
+		if (previewEntries == null) {
+			previewEntries = header.children().stream().map(child -> GroupPreviewEntry.ofRenderer((graphics, x, y) ->
+				child.entry().render(graphics, x, y, 0, EmiIngredient.RENDER_ICON))).toList();
+		}
+		return previewEntries;
 	}
 
 	public record GroupHeaderKey(String groupId) {}

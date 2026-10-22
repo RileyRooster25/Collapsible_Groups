@@ -4,10 +4,12 @@ import com.starskyxiii.collapsible_groups.compat.jei.JeiIngredientRenderBridge;
 import com.starskyxiii.collapsible_groups.compat.jei.runtime.JeiRuntimeHolder;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 import mezz.jei.api.ingredients.ITypedIngredient;
+import mezz.jei.api.ingredients.rendering.BatchRenderElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.TooltipFlag;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -22,7 +24,8 @@ import java.util.List;
  *   <li>A +/- indicator in the bottom-right corner shows the expand/collapse state</li>
  * </ul>
  *
- * <p>Item rendering uses vanilla {@code GuiGraphics.renderItem()}.
+ * <p>Item batches follow vanilla rendering without flushing between compatible models.
+ * Custom item renderers retain the vanilla {@code GuiGraphics.renderItem()} boundary.
  * Non-item ingredients (fluids, generics) fall back to JEI's own renderer via {@link JeiRuntimeHolder}.
  */
 public final class GroupIconRenderer implements IIngredientRenderer<GroupIcon> {
@@ -35,19 +38,37 @@ public final class GroupIconRenderer implements IIngredientRenderer<GroupIcon> {
 
 	@Override
 	public void render(GuiGraphics g, GroupIcon icon, int posX, int posY) {
+		render(g, icon, posX, posY, null);
+	}
+
+	@Override
+	public void renderBatch(GuiGraphics g, List<BatchRenderElement<GroupIcon>> elements) {
+		if (elements.isEmpty()) return;
+		try (GroupIconItemBatch batch = new GroupIconItemBatch(g)) {
+			for (BatchRenderElement<GroupIcon> element : elements) {
+				render(g, element.ingredient(), element.x(), element.y(), batch);
+			}
+		}
+	}
+
+	private static void render(GuiGraphics g, GroupIcon icon, int posX, int posY, @Nullable GroupIconItemBatch batch) {
 		List<ITypedIngredient<?>> items = icon.displayIngredients();
 		if (items.isEmpty()) return;
 
 		for (Layer layer : layers(posX, posY, items.size())) {
-			renderIngredient(g, items.get(layer.ingredientIndex()), layer);
+			renderIngredient(g, items.get(layer.ingredientIndex()), layer, batch);
 		}
 
 		// --- Expand/collapse indicator ---
 		g.pose().pushPose();
 		try {
 			g.pose().translate(0, 0, 200);
-			g.drawString(Minecraft.getInstance().font,
-				icon.isExpanded() ? "-" : "+", posX + 10, posY + 9, 0xFFFFFFFF, true);
+			String indicator = icon.isExpanded() ? "-" : "+";
+			if (batch == null) {
+				g.drawString(Minecraft.getInstance().font, indicator, posX + 10, posY + 9, 0xFFFFFFFF, true);
+			} else {
+				batch.renderIndicator(indicator, posX + 10, posY + 9);
+			}
 		} finally {
 			g.pose().popPose();
 		}
@@ -61,10 +82,11 @@ public final class GroupIconRenderer implements IIngredientRenderer<GroupIcon> {
 
 	/**
 	 * Renders a single ingredient at the given pixel offset.
-	 * Items use vanilla rendering; non-items delegate to JEI's renderer.
+	 * Items join the current batch when supported; non-items delegate to JEI's renderer.
 	 */
 	@SuppressWarnings("unchecked")
-	private static void renderIngredient(GuiGraphics g, ITypedIngredient<?> typed, Layer layer) {
+	private static void renderIngredient(GuiGraphics g, ITypedIngredient<?> typed, Layer layer,
+		@Nullable GroupIconItemBatch batch) {
 		g.pose().pushPose();
 		try {
 			// Scale around the layer's absolute top-left. JEI still receives absolute
@@ -73,16 +95,20 @@ public final class GroupIconRenderer implements IIngredientRenderer<GroupIcon> {
 			g.pose().scale(layer.scale(), layer.scale(), layer.scale());
 			g.pose().translate(-layer.x(), -layer.y(), 0);
 
-			// Fast path: items use vanilla rendering (no JEI dependency)
+			// Custom item renderers keep their original immediate rendering boundary.
 			var itemOpt = typed.getItemStack();
 			if (itemOpt.isPresent()) {
-				g.renderItem(itemOpt.get(), layer.x(), layer.y());
+				if (batch == null || !batch.renderItem(itemOpt.get(), layer.x(), layer.y())) {
+					if (batch != null) batch.beforeFallback();
+					g.renderItem(itemOpt.get(), layer.x(), layer.y());
+				}
 				return;
 			}
 
 			// Fallback: non-items use JEI's registered renderer
 			var runtime = JeiRuntimeHolder.get();
 			if (runtime != null) {
+				if (batch != null) batch.beforeFallback();
 				renderViaJei(g, (ITypedIngredient<Object>) typed, runtime, layer.x(), layer.y());
 			}
 		} finally {
