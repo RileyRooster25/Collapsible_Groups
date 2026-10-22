@@ -59,12 +59,20 @@ public abstract class MixinIngredientFilter {
 				}
 				@Override public boolean canIndexGeneric(IIngredientManager manager) { return manager != null; }
 				@Override public boolean probeFluidWithoutGroups() { return true; }
-				@Override public boolean beforeIndex(List<ITypedIngredient<?>> all, IIngredientManager manager) {
-					return JeiViewerAdapter.instance().universeReady(all, manager);
+				@Override public boolean beforeIndex(JeiViewerAdapter.IngredientSourceSnapshot source, IIngredientManager manager) {
+					return JeiViewerAdapter.instance().universeReady(source, manager);
 				}
 				@Override public boolean traceBuilds() { return true; }
 			});
 		this.cg$controller.initialize();
+	}
+
+	// These alter the empty-query source. Search-text invalidateCache deliberately is not a source change.
+	@Inject(method = {"addIngredient", "onIngredientsAdded", "onIngredientsUpdated", "onIngredientsRemoved",
+		"onIngredientVisibilityChanged", "onIngredientsVisibilityChanged", "updateHidden",
+		"markSortIndexesDirty", "rebuildItemFilter"}, at = @At("TAIL"), require = 0)
+	private void cg$onSourceChanged(CallbackInfo ci) {
+		if (this.cg$controller != null) this.cg$controller.sourceChanged();
 	}
 
 	@Inject(method = "getElements", at = @At("HEAD"), cancellable = true, require = 0)

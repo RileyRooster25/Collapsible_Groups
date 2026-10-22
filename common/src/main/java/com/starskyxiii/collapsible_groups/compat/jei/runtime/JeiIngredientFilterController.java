@@ -42,6 +42,7 @@ import java.util.List;
 import mezz.jei.common.util.Translator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -67,12 +68,13 @@ public final class JeiIngredientFilterController {
 	private @Nullable List<String> baseListGroupIds;
 	private @Nullable Map<String, List<IElement<?>>> childrenByGroupId;
 	private @Nullable ViewerProjection<ITypedIngredient<?>> projection;
-	private volatile @Nullable List<ITypedIngredient<?>> cachedFullList;
+	private volatile @Nullable JeiViewerAdapter.IngredientSourceSnapshot cachedSource;
+	private final AtomicBoolean sourceDirty = new AtomicBoolean();
 	private long sourceRevision;
 	private @Nullable IndexedSource indexedSource;
 	private String searchTextForCache = "";
 
-	private record IndexedSource(long revision, List<ITypedIngredient<?>> ingredients,
+	private record IndexedSource(long revision, JeiViewerAdapter.IngredientSourceSnapshot source,
 		JeiViewerGroupIndex.Generation generation) {}
 
 	private record GroupMatches(GroupCandidateIndex candidates, Map<String, List<ItemStack>> items,
@@ -98,6 +100,7 @@ public final class JeiIngredientFilterController {
 
 	public void initialize() {
 		JeiIngredientSourceState.deactivate();
+		sourceDirty.set(false);
 		sourceRevision++;
 		indexedSource = null;
 		if (fullChangeSubscription != null) fullChangeSubscription.close();
@@ -119,10 +122,11 @@ public final class JeiIngredientFilterController {
 			() -> handleIndexedChange(GroupChangeEvent.Kind.ENABLED));
 		kubeJsChangeSubscription = GroupChangeEvent.subscribe(GroupChangeEvent.Kind.KUBEJS_REPLACE,
 			() -> handleIndexedChange(GroupChangeEvent.Kind.KUBEJS_REPLACE));
-		cachedFullList = null;
+		cachedSource = null;
 	}
 
 	public List<IElement<?>> getElements() {
+		applyPendingSourceChanges();
 		List<IElement<?>> current = displayCache.get();
 		if (current == null) {
 			String raw = filterText.get();
@@ -134,6 +138,17 @@ public final class JeiIngredientFilterController {
 		return current;
 	}
 
+	/** JEI callbacks may fire repeatedly in one batch; consume them after JEI updates dirty state. */
+	public void sourceChanged() {
+		sourceDirty.set(true);
+	}
+
+	private void applyPendingSourceChanges() {
+		if (sourceDirty.getAndSet(false)) {
+			viewerIndex.onGroupChange(GroupChangeEvent.Kind.SOURCE_RELOAD, GroupRegistry.getAllIncludingKubeJs());
+		}
+	}
+
 	private void handleIndexedChange(GroupChangeEvent.Kind kind) {
 		clearStructureCaches();
 		notifyListeners.run();
@@ -142,7 +157,7 @@ public final class JeiIngredientFilterController {
 	private synchronized void invalidateSource() {
 		sourceRevision++;
 		indexedSource = null;
-		cachedFullList = null;
+		cachedSource = null;
 		GroupRegistry.clearJeiAllItems();
 		GroupRegistry.clearJeiAllFluids();
 		clearStructureCaches();
@@ -150,14 +165,17 @@ public final class JeiIngredientFilterController {
 
 	private JeiViewerGroupIndex.Generation buildConfiguredIndex() {
 		long revision;
-		List<ITypedIngredient<?>> snapshot;
+		JeiViewerAdapter.IngredientSourceSnapshot snapshot;
 		synchronized (this) {
 			revision = sourceRevision;
-			snapshot = cachedFullList;
+			snapshot = cachedSource;
 		}
-		if (snapshot == null) snapshot = uncachedIngredients.apply("").toList();
+		if (snapshot == null) snapshot = new JeiViewerAdapter.IngredientSourceSnapshot(uncachedIngredients.apply("").toList());
 		synchronized (this) {
-			if (sourceRevision == revision) cachedFullList = snapshot;
+			if (sourceRevision == revision) {
+				if (cachedSource == null) cachedSource = snapshot;
+				else snapshot = cachedSource;
+			}
 		}
 		return buildIngredientGroupIndex(snapshot, revision);
 	}
@@ -186,17 +204,19 @@ public final class JeiIngredientFilterController {
 		notifyListeners.run();
 	}
 
-	private JeiViewerGroupIndex.Generation buildIngredientGroupIndex(List<ITypedIngredient<?>> all, long revision) {
+	private JeiViewerGroupIndex.Generation buildIngredientGroupIndex(
+		JeiViewerAdapter.IngredientSourceSnapshot source, long revision) {
+		List<ITypedIngredient<?>> all = source.ingredients();
 		long traceStart = hooks.traceBuilds() ? PerformanceTrace.begin() : 0L;
 		List<GroupDefinition> allGroups = GroupRegistry.getAllIncludingKubeJs();
 		JeiViewerGroupIndex.Generation previous = null;
 		synchronized (this) {
-			if (indexedSource != null && indexedSource.revision() == revision && indexedSource.ingredients() == all) {
+			if (indexedSource != null && indexedSource.revision() == revision && indexedSource.source() == source) {
 				previous = indexedSource.generation();
 			}
 		}
 		JeiViewerAdapter.ProjectionContext context = previous == null
-			? JeiViewerAdapter.instance().updateBootstrap(all, ingredientManager) : previous.projectionContext();
+			? JeiViewerAdapter.instance().updateBootstrap(source, ingredientManager) : previous.projectionContext();
 		GroupIndexUpdate update = GroupIndexUpdate.between(previous == null ? null : previous.candidates(), allGroups);
 		List<GroupDefinition> changedGroups = update.changedGroups();
 		GroupMatches changed = buildChangedGroups(all, changedGroups, context);
@@ -207,7 +227,7 @@ public final class JeiIngredientFilterController {
 			update.mergeMatches(previous == null ? Map.of() : previous.fullMatchGeneric(), changed.generic()),
 			context, update.groups());
 		synchronized (this) {
-			if (sourceRevision == revision) indexedSource = new IndexedSource(revision, all, generation);
+			if (sourceRevision == revision) indexedSource = new IndexedSource(revision, source, generation);
 		}
 		if (hooks.traceBuilds()) {
 			PerformanceTrace.logIfSlow("MixinIngredientFilter.buildIngredientGroupIndex", traceStart, 0,
@@ -273,20 +293,22 @@ public final class JeiIngredientFilterController {
 		long traceStart = hooks.traceBuilds() ? PerformanceTrace.begin() : 0L;
 		JeiIngredientSourceState.SourceToken expected;
 		long revision;
-		List<ITypedIngredient<?>> all;
+		JeiViewerAdapter.IngredientSourceSnapshot source;
 		synchronized (this) {
 			expected = JeiIngredientSourceState.capture(ingredientManager);
 			revision = sourceRevision;
-			all = cachedFullList;
+			source = cachedSource;
 		}
-		if (all == null) all = uncachedIngredients.apply("").toList();
+		if (source == null) source = new JeiViewerAdapter.IngredientSourceSnapshot(uncachedIngredients.apply("").toList());
 		synchronized (this) {
 			if (sourceRevision != revision) {
 				installRawStructure(ingredients);
 				return;
 			}
-			cachedFullList = all;
+			if (cachedSource == null) cachedSource = source;
+			else source = cachedSource;
 		}
+		List<ITypedIngredient<?>> all = source.ingredients();
 		boolean needsItems = GroupRegistry.isJeiAllItemsEmpty();
 		boolean needsFluids = hooks.hasFluidType() && GroupRegistry.isJeiAllFluidsEmpty()
 			&& (needsItems || hooks.fluidCachePolicy() == FluidCachePolicy.INDEPENDENT);
@@ -294,7 +316,7 @@ public final class JeiIngredientFilterController {
 			needsItems ? all.stream().flatMap(i -> i.getItemStack().stream()).toList() : null,
 			needsFluids ? extractFluids(all) : null);
 
-		if (hooks.beforeIndex(all, ingredientManager)) {
+		if (hooks.beforeIndex(source, ingredientManager)) {
 			viewerIndex.requestRebuild(GroupRegistry.getAllIncludingKubeJs());
 		}
 		List<GroupDefinition> groups = GroupRegistry.getAllIncludingKubeJs();
@@ -324,7 +346,7 @@ public final class JeiIngredientFilterController {
 				newBaseList.add(new IngredientElement<>(ingredient.ingredient().entry()));
 				newGroupIds.add(null);
 			} else if (entry instanceof ViewerProjection.GroupHeader<ITypedIngredient<?>> header) {
-				newBaseList.add(createGroupHeader(header, this::toggleAndRebuildDisplay));
+				newBaseList.add(createGroupHeader(header, this::toggleAndRebuildDisplay, readyGeneration.projectionContext()));
 				newGroupIds.add(header.group().id());
 				newChildren.put(header.group().id(), createChildElements(header));
 			}
@@ -393,10 +415,11 @@ public final class JeiIngredientFilterController {
 		return result;
 	}
 
-	private IElement<?> createGroupHeader(ViewerProjection.GroupHeader<ITypedIngredient<?>> header, Runnable onToggle) {
+	private IElement<?> createGroupHeader(ViewerProjection.GroupHeader<ITypedIngredient<?>> header, Runnable onToggle,
+		JeiViewerAdapter.ProjectionContext context) {
 		GroupDefinition group = header.group();
 		List<ITypedIngredient<?>> display = JeiViewerAdapter.instance().assembleHeaderIcons(
-			header.iconIds(), header.fallbackIconIngredients());
+			header.iconIds(), header.fallbackIconIngredients(), context);
 		GroupIcon icon = new GroupIcon(group.id(), group.displayName().key(), group.displayName().fallback(), display);
 		ITypedIngredient<GroupIcon> typedIcon = ingredientManager
 			.createTypedIngredient(GroupIcon.TYPE, icon)
@@ -464,7 +487,7 @@ public final class JeiIngredientFilterController {
 		FluidCachePolicy fluidCachePolicy();
 		default boolean canIndexGeneric(IIngredientManager manager) { return true; }
 		default boolean probeFluidWithoutGroups() { return false; }
-		default boolean beforeIndex(List<ITypedIngredient<?>> all, IIngredientManager manager) { return false; }
+		default boolean beforeIndex(JeiViewerAdapter.IngredientSourceSnapshot source, IIngredientManager manager) { return false; }
 		default boolean traceBuilds() { return false; }
 	}
 
