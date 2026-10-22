@@ -12,7 +12,7 @@ The setup uses these versions. Third-party mod downloads and hashes are pinned i
 
 | Component | Version |
 | --- | --- |
-| Minecraft / Collapsible Groups | 26.1.2 / 2.0.0-beta4 |
+| Minecraft / Collapsible Groups | 26.1.2 / 2.0.0-beta5 |
 | JEI | 29.47.0.110 |
 | NeoForge | 26.1.2.99 |
 | Fabric Loader / Fabric API | 0.19.5 / 0.155.3+26.1.2 |
