@@ -1,9 +1,47 @@
-# JEI compatibility smoke test (Minecraft 1.20.1)
+# JEI smoke tests for Minecraft 1.20.1
 
-This standalone tool loads the published mod and JEI jars in an owned, disposable Prism instance. It is excluded from all product builds. It verifies header expansion/collapse, manager entry (including empty search results), search filtering, and clearing the query. Input enters Minecraft through MouseHandler/KeyboardHandler. Assertions use three distinct rendered frames and client ticks; screenshots and logs accompany the result. Drag tests are intentionally outside this smoke suite.
+Run Collapsible Groups and JEI in isolated Prism instances. The probe checks native mouse and keyboard input, group expansion and collapse, search and clearing, and manager entry with populated and empty results. It is excluded from product builds.
 
-Build the main mod, then run Gradle with JDK 25: `../../gradlew -p . :forge:build :fabric:build`. The probe targets Java 17. Put Prism paths and exact JEI/Fabric API artifact paths in `local.json` (see `local.example.json`). Run `node prepare.mjs forge fabric`, then `node run.mjs forge` and `node run.mjs fabric`. If a delayed launcher confirmation leaves the owned client already running, use `node run.mjs <loader> --attach`; identity and artifact checks still apply. Preparation refuses to overwrite existing instances. Each test creates a new superflat world in its isolated instance; use a fresh instance suffix for a repeat run.
+## Before you start
 
-The probe starts only with `cgsmoke.enabled=true`, a random session matching `.cg-smoke-owned.json`, and an explicit port. Its HTTP service binds to 127.0.0.1, authenticates every request with that session, and exposes only identity, observation, bounded native input, screenshot, isolated world creation, and normal shutdown. It has no arbitrary evaluation endpoint. Keep this test jar out of normal modpacks.
+Use Windows, Node.js 22 or newer, JDK 25 for Gradle, Java 17 for Minecraft, and a signed-in Prism Launcher account. No npm installation is needed. Dependency versions come from the repository's gradle.properties and your configured artifact paths.
 
-`profiles/`, `evidence/`, local settings, and build outputs are ignored. Evidence records the exact product, probe, and dependency SHA-256 values, verifies the process identity, and checks normal client shutdown. Failed checks remain failed; a later passing run produces a separate record.
+## 1. Configure local paths
+
+Run the remaining commands from test-tools/jei-smoke. Copy local.example.json to local.json once; edit an existing local.json instead of replacing it. Set java to Java 17's javaw.exe, prism to your configured Prism launch executable, prismData to the matching data directory, the dependency JAR paths, and a unique instanceSuffix. Machine-specific launcher helpers belong in local.json.
+
+## 2. Build the mod and probes
+
+Set JAVA_HOME to JDK 25 in PowerShell, then run:
+
+```powershell
+../../gradlew.bat -p ../.. :common:check :forge:build :fabric:build
+../../gradlew.bat -p . :forge:build :fabric:build
+node --test *.test.mjs
+```
+
+The probes target Java 17. Use the exact JEI and Fabric API versions expected by the current checkout.
+
+## 3. Prepare and run
+
+```powershell
+node prepare.mjs forge fabric
+node run.mjs forge
+node run.mjs fabric
+```
+
+Preparation refuses existing instance names and occupied or indeterminate ports. It creates owned instances on ports 25741 (Forge) and 25742 (Fabric), with separate superflat worlds and fixed screen settings. The launcher receives the configured Prism data directory. Stop if a command fails.
+
+Assertions require three distinct rendered frames and client ticks. Keep the game focused and avoid mouse or keyboard input during a run. A failed check stays failed, and each run keeps separate evidence.
+
+## Rebuild and rerun
+
+After rebuilding the product or probe, use a fresh instanceSuffix and prepare replacement instances after the previous clients have exited. If launcher confirmation left the already prepared client running, node run.mjs <loader> --attach can attach to it; ownership, session and artifact verification still apply.
+
+## Troubleshooting and scope
+
+Inspect result.json, screenshots and logs under evidence/ first. Only a verified owned client receives normal shutdown. Preserve backups and inspect the process and port if shutdown cannot be verified; never stop a shared Prism process to recover this test.
+
+The HTTP probe binds only to loopback, requires its random session and ownership marker, and exposes bounded test operations. It has no arbitrary evaluation endpoint. Keep the probe out of normal modpacks.
+
+Keep local.json, profiles, evidence and build outputs local. Commit test source, example configuration and dated result summaries. [RESULTS.md](RESULTS.md) records historical runs, not certification of the current beta5 artifacts. This suite does not cover drag input, EMI, or performance measurements.

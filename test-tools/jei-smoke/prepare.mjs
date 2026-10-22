@@ -1,9 +1,11 @@
+import {occupied} from './ports.mjs';
 import fs from 'node:fs/promises';import path from 'node:path';import {randomUUID,createHash} from 'node:crypto';import assert from 'node:assert/strict';import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));const local=JSON.parse(await fs.readFile(path.join(root,'local.json'),'utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex');const props=Object.fromEntries((await fs.readFile(path.join(root,'../../gradle.properties'),'utf8')).split(/\r?\n/).filter(l=>l.includes('=')&&!l.startsWith('#')).map(l=>[l.slice(0,l.indexOf('=')),l.slice(l.indexOf('=')+1)]));
 await fs.mkdir(path.join(root,'profiles'),{recursive:true});
 for(const loader of process.argv.slice(2)){
  assert(['forge','fabric'].includes(loader));const session=randomUUID(),port=loader==='forge'?25741:25742,instance='CG JEI Smoke 1.20.1 '+loader+' '+local.instanceSuffix;
+ assert.equal(await occupied(port),false,'Test port is already occupied');
  const target=path.join(local.prismData,'instances',instance),gameDir=path.join(target,'minecraft');try{await fs.access(target);throw Error('Instance already exists');}catch(e){if(e.code!=='ENOENT')throw e;}
  const staging=path.join(local.prismData,'cg-smoke-staging-'+session),game=path.join(staging,'minecraft');await fs.mkdir(path.join(game,'mods'),{recursive:true});
  const source={collapsible_groups:path.resolve(root,'../../'+loader+'/build/libs/collapsible_groups-'+loader+'-1.20.1-'+props.version+'.jar'),cgsmoke:path.join(root,loader,'build/libs/cg-jei-smoke-1.20.1-'+loader+'-0.1.0.jar'),jei:local[loader].jei,...(loader==='fabric'?{'fabric-api':local.fabric.api}:{})};
