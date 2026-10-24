@@ -9,12 +9,16 @@ import com.starskyxiii.collapsible_groups.group.filter.GroupFilterValidator;
 import com.starskyxiii.collapsible_groups.ingredient.ItemStackIngredientView;
 import com.starskyxiii.collapsible_groups.internal.query.CompiledGroupQuery;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.starskyxiii.collapsible_groups.internal.version.data.ItemDataPayload;
 import com.starskyxiii.collapsible_groups.i18n.GroupTranslationHelper;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -36,6 +40,8 @@ public final class GroupDefinition {
 	private final int priority;
 	private final JsonObject extra;
 	private final CompiledGroupQuery query;
+	private final String parentId;
+	private final Map<String, Integer> memberRanks;
 
 	public GroupDefinition(String id, String name, boolean enabled, GroupFilter filter) {
 		this(id, name, enabled, filter, List.of());
@@ -127,6 +133,8 @@ public final class GroupDefinition {
 		this.priority = priority;
 		this.extra = copyExtra(extra);
 		this.query = CompiledGroupQuery.compile(this.filter, sourceFilter);
+		this.parentId = readParent(this.extra);
+		this.memberRanks = readOrder(this.extra);
 	}
 
     private static GroupFilter typedExactData(GroupFilter filter) {
@@ -209,6 +217,23 @@ public final class GroupDefinition {
 		return extra.size() > 0;
 	}
 
+	/** The id of the group this one nests under ({@code extra.parent}), or null for a top-level group. */
+	public String parentId() {
+		return parentId;
+	}
+
+	/**
+	 * Position of a member (an ingredient id, or a child group id) in {@code extra.order}, or
+	 * {@link Integer#MAX_VALUE} when it is not listed. Listed members come first, in list order.
+	 */
+	public int memberRank(String memberId) {
+		return memberId == null ? Integer.MAX_VALUE : memberRanks.getOrDefault(memberId, Integer.MAX_VALUE);
+	}
+
+	public boolean hasMemberOrder() {
+		return !memberRanks.isEmpty();
+	}
+
 	public CompiledFilter compiledFilter() {
 		return query.evaluator();
 	}
@@ -279,6 +304,25 @@ public final class GroupDefinition {
 
 	public boolean isStructurallyEditable() {
 		return !hasUnavailableFilter() && GroupFilterEditorDraft.decode(filter).structurallyEditable();
+	}
+
+	private static String readParent(JsonObject extra) {
+		JsonElement value = extra.get("parent");
+		if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return null;
+		String parent = value.getAsString().trim();
+		return parent.isEmpty() ? null : parent;
+	}
+
+	private static Map<String, Integer> readOrder(JsonObject extra) {
+		JsonElement value = extra.get("order");
+		if (value == null || !value.isJsonArray()) return Map.of();
+		Map<String, Integer> ranks = new HashMap<>();
+		JsonArray order = value.getAsJsonArray();
+		for (int i = 0; i < order.size(); i++) {
+			JsonElement member = order.get(i);
+			if (member.isJsonPrimitive() && member.getAsJsonPrimitive().isString()) ranks.putIfAbsent(member.getAsString(), i);
+		}
+		return Map.copyOf(ranks);
 	}
 
 	private static JsonObject copyExtra(JsonObject extra) {

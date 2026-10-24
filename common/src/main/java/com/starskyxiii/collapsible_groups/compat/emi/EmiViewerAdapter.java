@@ -192,8 +192,7 @@ public final class EmiViewerAdapter implements ViewerAdapter<EmiIngredient, Clie
 	) {
 		List<ViewerIngredient<EmiIngredient>> icons = resolveHeaderIcons(
 			header.iconIds(), header.fallbackIconIngredients());
-		return new ViewerProjection.GroupHeader<>(header.group(), header.children(), header.itemCount(),
-			header.fluidCount(), header.genericCount(), header.expanded(), header.iconIds(), icons);
+		return header.withFallbackIcons(icons);
 	}
 
 	List<ViewerIngredient<EmiIngredient>> resolveHeaderIcons(

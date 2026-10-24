@@ -65,9 +65,29 @@ public final class GroupRepository {
         builtinNotificationPending = false;
     }
 
+	private static void reloadModGroups(ResourceManager manager) {
+		String json = null;
+		if (manager != null) {
+			try {
+				var resource = manager.getResource(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+					Constants.MOD_ID, com.starskyxiii.collapsible_groups.skies.ModGroups.RESOURCE_PATH));
+				if (resource.isPresent()) {
+					try (java.io.InputStream input = resource.get().open()) {
+						json = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+					}
+				}
+			} catch (java.io.IOException | RuntimeException failure) {
+				Constants.LOG.warn("Could not read {}: {}", com.starskyxiii.collapsible_groups.skies.ModGroups.RESOURCE_PATH, failure.toString());
+			}
+		}
+		String problem = com.starskyxiii.collapsible_groups.skies.ModGroups.reload(json);
+		if (problem != null) Constants.LOG.warn("Ignoring {}: {}", com.starskyxiii.collapsible_groups.skies.ModGroups.RESOURCE_PATH, problem);
+	}
+
 	public static synchronized boolean reload(ResourceManager manager) {
 		currentResources = manager;
 		GroupResourceData incoming = GroupResourceLoader.load(manager, Services.PLATFORM.getConfigDir());
+		reloadModGroups(manager);
 		boolean accepted = SERVICE.replaceManaged(incoming, STORE.loadEnabledOverrides(), Services.CONFIG.loadDefaultGroups());
 		if (!initialized) STORE.loadExpandState();
 		initialized = true;

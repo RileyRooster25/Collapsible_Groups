@@ -42,6 +42,11 @@ public interface IPlatformHelper {
     /** Returns true if the mod with the given ID is loaded, e.g. {@code "jei"} or {@code "chipped"}. */
     boolean isModLoaded(String modId);
 
+    /** The mod's display name, or the id itself when the mod is unknown. */
+    default String getModName(String modId) {
+        return modId;
+    }
+
     /** Returns true when running in a development environment (enables additional debug checks). */
     boolean isDevelopmentEnvironment();
 

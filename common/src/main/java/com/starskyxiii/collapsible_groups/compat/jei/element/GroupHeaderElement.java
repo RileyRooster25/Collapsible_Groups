@@ -38,6 +38,7 @@ public final class GroupHeaderElement implements IElement<GroupIcon>, PreRenderI
 	private final Component countLabel;
 	private final List<GroupPreviewEntry> previewEntries;
 	private final Runnable onToggle;
+	private final @Nullable Component footer;
 
 	public GroupHeaderElement(
 		ITypedIngredient<GroupIcon> typedIcon,
@@ -45,10 +46,22 @@ public final class GroupHeaderElement implements IElement<GroupIcon>, PreRenderI
 		List<GroupPreviewEntry> previewEntries,
 		Runnable onToggle
 	) {
+		this(typedIcon, countLabel, previewEntries, onToggle, null);
+	}
+
+	/** {@code footer} is the mod group line shown last in the tooltip, or null for none. */
+	public GroupHeaderElement(
+		ITypedIngredient<GroupIcon> typedIcon,
+		Component countLabel,
+		List<GroupPreviewEntry> previewEntries,
+		Runnable onToggle,
+		@Nullable Component footer
+	) {
 		this.typedIcon = typedIcon;
 		this.countLabel = countLabel;
 		this.previewEntries = List.copyOf(previewEntries);
 		this.onToggle = onToggle;
+		this.footer = footer;
 	}
 
 	private GroupIcon icon() { return typedIcon.getIngredient(); }
@@ -91,6 +104,7 @@ public final class GroupHeaderElement implements IElement<GroupIcon>, PreRenderI
 		}
 		String actionKey = icon().isExpanded() ? ModTranslationKeys.TOOLTIP_COLLAPSE : ModTranslationKeys.TOOLTIP_EXPAND;
 		tooltip.add(Component.translatable(actionKey).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+		if (footer != null) tooltip.add(footer);
 	}
 
 	@Override

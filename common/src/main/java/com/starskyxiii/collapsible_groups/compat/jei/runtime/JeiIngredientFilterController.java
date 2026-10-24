@@ -65,6 +65,8 @@ public final class JeiIngredientFilterController {
 	private @Nullable List<IElement<?>> baseList;
 	private @Nullable List<String> baseListGroupIds;
 	private @Nullable Map<String, List<IElement<?>>> childrenByGroupId;
+	/** For each fold, the group id of each of its child elements that is itself a fold, else null. */
+	private @Nullable Map<String, List<String>> childGroupIdsByGroupId;
 	private @Nullable ViewerProjection<ITypedIngredient<?>> projection;
 	private volatile @Nullable List<ITypedIngredient<?>> cachedFullList;
 	private long sourceRevision;
@@ -171,6 +173,7 @@ public final class JeiIngredientFilterController {
 		baseList = null;
 		baseListGroupIds = null;
 		childrenByGroupId = null;
+		childGroupIdsByGroupId = null;
 		projection = null;
 		searchTextForCache = "";
 	}
@@ -318,6 +321,7 @@ public final class JeiIngredientFilterController {
 		List<IElement<?>> newBaseList = new ArrayList<>();
 		List<String> newGroupIds = new ArrayList<>();
 		Map<String, List<IElement<?>>> newChildren = new HashMap<>();
+		Map<String, List<String>> newChildGroupIds = new HashMap<>();
 		for (ViewerProjection.Entry<ITypedIngredient<?>> entry : projected.entries()) {
 			switch (entry) {
 				case ViewerProjection.IngredientEntry<ITypedIngredient<?>> ingredient -> {
@@ -327,13 +331,14 @@ public final class JeiIngredientFilterController {
 				case ViewerProjection.GroupHeader<ITypedIngredient<?>> header -> {
 					newBaseList.add(createGroupHeader(header, this::toggleAndRebuildDisplay));
 					newGroupIds.add(header.group().id());
-					newChildren.put(header.group().id(), createChildElements(header));
+					registerChildren(header, newChildren, newChildGroupIds);
 				}
 			}
 		}
 		baseList = newBaseList;
 		baseListGroupIds = newGroupIds;
 		childrenByGroupId = newChildren;
+		childGroupIdsByGroupId = newChildGroupIds;
 		projection = projected;
 		if (hooks.traceBuilds()) {
 			PerformanceTrace.logIfSlow("MixinIngredientFilter.buildStructureCache", traceStart, 20,
@@ -349,6 +354,7 @@ public final class JeiIngredientFilterController {
 		baseList = rawStructure.elements();
 		baseListGroupIds = rawStructure.groupIds();
 		childrenByGroupId = rawStructure.childrenByGroupId();
+		childGroupIdsByGroupId = Map.of();
 		projection = null;
 	}
 
@@ -381,18 +387,51 @@ public final class JeiIngredientFilterController {
 		Set<String> expanded = new HashSet<>();
 		if (projection != null) {
 			for (ViewerProjection.Entry<ITypedIngredient<?>> entry : projection.entries()) {
-				if (entry instanceof ViewerProjection.GroupHeader<ITypedIngredient<?>> header && header.expanded()) {
-					expanded.add(header.group().id());
-				}
+				if (entry instanceof ViewerProjection.GroupHeader<ITypedIngredient<?>> header) collectExpanded(header, expanded);
 			}
 		}
 		List<IElement<?>> result = new ArrayList<>(baseList.size());
 		for (int i = 0; i < baseList.size(); i++) {
 			result.add(baseList.get(i));
 			String groupId = baseListGroupIds.get(i);
-			if (groupId != null && expanded.contains(groupId)) result.addAll(childrenByGroupId.get(groupId));
+			if (groupId != null && expanded.contains(groupId)) appendChildren(groupId, expanded, result);
 		}
 		return result;
+	}
+
+	/** A fold's child elements, and, under each child fold that is expanded, that fold's own children. */
+	private void appendChildren(String groupId, Set<String> expanded, List<IElement<?>> result) {
+		List<IElement<?>> children = childrenByGroupId.get(groupId);
+		if (children == null) return;
+		List<String> childGroupIds = childGroupIdsByGroupId == null ? null : childGroupIdsByGroupId.get(groupId);
+		for (int i = 0; i < children.size(); i++) {
+			result.add(children.get(i));
+			String childGroupId = childGroupIds == null ? null : childGroupIds.get(i);
+			if (childGroupId != null && expanded.contains(childGroupId)) appendChildren(childGroupId, expanded, result);
+		}
+	}
+
+	private static void collectExpanded(ViewerProjection.GroupHeader<ITypedIngredient<?>> header, Set<String> expanded) {
+		if (!header.expanded()) return;
+		expanded.add(header.group().id());
+		for (ViewerProjection.GroupHeader<ITypedIngredient<?>> sub : header.subHeaders()) collectExpanded(sub, expanded);
+	}
+
+	private void registerChildren(ViewerProjection.GroupHeader<ITypedIngredient<?>> header,
+		Map<String, List<IElement<?>>> children, Map<String, List<String>> childGroupIds) {
+		List<IElement<?>> elements = new ArrayList<>();
+		List<String> ids = new ArrayList<>();
+		for (ViewerProjection.GroupHeader<ITypedIngredient<?>> sub : header.subHeaders()) {
+			elements.add(createGroupHeader(sub, this::toggleAndRebuildDisplay));
+			ids.add(sub.group().id());
+			registerChildren(sub, children, childGroupIds);
+		}
+		for (IElement<?> child : createChildElements(header)) {
+			elements.add(child);
+			ids.add(null);
+		}
+		children.put(header.group().id(), elements);
+		childGroupIds.put(header.group().id(), ids);
 	}
 
 	private IElement<?> createGroupHeader(ViewerProjection.GroupHeader<ITypedIngredient<?>> header, Runnable onToggle) {
@@ -404,9 +443,10 @@ public final class JeiIngredientFilterController {
 			.createTypedIngredient(GroupIcon.TYPE, icon, false)
 			.orElseThrow(() -> new IllegalStateException(
 				"JEI could not create a GroupIcon typed ingredient; GroupIcon.TYPE must be registered first"));
-		List<GroupPreviewEntry> preview = new ArrayList<>(header.children().size());
+		List<ViewerIngredient<ITypedIngredient<?>>> members = header.allIngredients();
+		List<GroupPreviewEntry> preview = new ArrayList<>(members.size());
 		List<ITypedIngredient<?>> generic = new ArrayList<>();
-		for (ViewerIngredient<ITypedIngredient<?>> child : header.children()) {
+		for (ViewerIngredient<ITypedIngredient<?>> child : members) {
 			switch (child.kind()) {
 				case ITEM -> child.entry().getItemStack().ifPresent(stack -> preview.add(GroupPreviewEntry.ofItem(stack)));
 				case FLUID -> {
@@ -418,7 +458,20 @@ public final class JeiIngredientFilterController {
 		}
 		preview.addAll(com.starskyxiii.collapsible_groups.compat.jei.preview.JeiGroupPreviewEntries.fromTypedIngredients(generic));
 		return new GroupHeaderElement(typedIcon,
-			buildCountLabel(header.itemCount(), header.fluidCount(), header.genericCount()), preview, onToggle);
+			buildCountLabel(header.totalItemCount(), header.totalFluidCount(), header.totalGenericCount()), preview, onToggle,
+			modGroupFooter(members));
+	}
+
+	/** The mod groups of a fold's members, in member order, in the theme's dim blue. */
+	private static @Nullable Component modGroupFooter(List<ViewerIngredient<ITypedIngredient<?>>> members) {
+		List<String> namespaces = new ArrayList<>();
+		for (ViewerIngredient<ITypedIngredient<?>> member : members) {
+			var location = member.view().resourceLocation();
+			if (location != null) namespaces.add(location.getNamespace());
+		}
+		if (namespaces.isEmpty()) return null;
+		String footer = com.starskyxiii.collapsible_groups.skies.ModGroups.footer(namespaces, Services.PLATFORM::getModName);
+		return Component.literal(footer).withStyle(ChatFormatting.BLUE, ChatFormatting.ITALIC);
 	}
 
 	private List<IElement<?>> createChildElements(ViewerProjection.GroupHeader<ITypedIngredient<?>> header) {

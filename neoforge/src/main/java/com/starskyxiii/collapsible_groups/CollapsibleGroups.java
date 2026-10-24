@@ -42,6 +42,7 @@ public class CollapsibleGroups {
 		eventBus.addListener(this::onConfigLoading);
 		eventBus.addListener(this::registerTooltipComponentFactories);
 		eventBus.addListener(this::onRegisterReloadListeners);
+		com.starskyxiii.collapsible_groups.client.skies.SkiesClient.register(eventBus, modContainer);
 		NeoForge.EVENT_BUS.addListener(this::onRegisterClientCommands);
 		NeoForge.EVENT_BUS.addListener(this::onTagsUpdated);
 		if (ModList.get().isLoaded("emi") || ModList.get().isLoaded(ViewerLifecycleCoordinator.TMRV_MOD_ID)
