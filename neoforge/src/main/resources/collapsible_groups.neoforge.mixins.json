@@ -11,6 +11,7 @@
     "MixinIngredientFilter",
     "MixinIngredientListRenderer",
     "MixinIngredientListOverlay",
+    "MixinScreenShift",
     "MixinGuiTextFieldFilterAccessor",
     "MixinEmiScreenSpace",
     "MixinEmiScreenManager"

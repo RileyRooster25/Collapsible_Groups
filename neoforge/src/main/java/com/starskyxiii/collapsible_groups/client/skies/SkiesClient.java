@@ -5,25 +5,21 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
 
-import java.util.function.Function;
-
-/** Wires the Skies Aero display and the stats file into the client. The one place that registers them. */
+/** Wires the Skies Aero detail panel and the stats file into the client. The one place that registers them. */
 public final class SkiesClient {
 	private SkiesClient() {}
 
 	public static void register(IEventBus modBus, ModContainer container) {
 		container.registerConfig(ModConfig.Type.CLIENT, SkiesConfig.SPEC, "collapsiblegroups/skies.toml");
-		modBus.addListener((RegisterClientTooltipComponentFactoriesEvent event) ->
-			event.register(DividerTooltipComponent.class, Function.identity()));
-		NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, SkiesDisplay::onGatherTooltip);
+		NeoForge.EVENT_BUS.addListener(SkiesDisplay::onClientTick);
 		NeoForge.EVENT_BUS.addListener(SkiesDisplay::onScreenRender);
+		// Ahead of JEI and the screen, but only consumed when the wheel is over the panel and it can scroll.
+		NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SkiesDisplay::onMouseScrolled);
 		NeoForge.EVENT_BUS.addListener(SkiesDisplay::onScreenClosing);
 		NeoForge.EVENT_BUS.addListener(SkiesClient::onTagsUpdated);
-		SkiesDisplay.subscribeToGroupChanges();
 	}
 
 	/** Tags arrive after joining a world; mining levels need them, so the stats are read then. */

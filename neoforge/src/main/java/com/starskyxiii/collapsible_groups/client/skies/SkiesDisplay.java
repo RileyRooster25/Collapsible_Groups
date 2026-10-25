@@ -1,26 +1,21 @@
 package com.starskyxiii.collapsible_groups.client.skies;
 
-import com.mojang.datafixers.util.Either;
-import com.starskyxiii.collapsible_groups.group.GroupChangeEvent;
-import com.starskyxiii.collapsible_groups.group.GroupDefinition;
-import com.starskyxiii.collapsible_groups.group.GroupRepository;
 import com.starskyxiii.collapsible_groups.platform.Services;
 import com.starskyxiii.collapsible_groups.skies.ModGroups;
-import com.starskyxiii.collapsible_groups.skies.TypeRanks;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.world.inventory.tooltip.TooltipComponent;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.client.event.RenderTooltipEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,166 +23,220 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The short tooltip (item name, a divider, the mod group) and the fixed-width detail panel between the
- * container and the JEI list, which shows the last hovered item's full tooltip, its rank in its type,
- * and its mod group with the exact mod beneath.
+ * The detail panel (step 1a, placement F): docked between the screen's content and JEI's list, it shows the
+ * hovered item's full tooltip, Shift lines included and mod name lines left out, then the mod group and,
+ * beneath in smaller text, the exact mod when it differs. The hover tooltip itself is left as it was.
+ *
+ * <p>The reserved rectangle is fixed for the screen; the visible box is drawn only as tall as its text,
+ * clips when longer, and the mouse wheel over it scrolls it.
  */
 public final class SkiesDisplay {
-	private static final int GAP = 2;
-	private static final int PADDING = 4;
-	private static final int MIN_LIST_WIDTH = 4 * 18;
-	private static final int BACKGROUND = 0xF0100010;
-	private static final int BORDER_TOP = 0x505000FF;
-	private static final int BORDER_BOTTOM = 0x5028007F;
-	private static final int TEXT = 0xFFFFFFFF;
-	private static final int RANK = 0xFFFFAA00;
+	/** Above the screen and JEI's list, below tooltips (drawn at 400). */
+	private static final int Z = 200;
+	private static final int INSET = 4;
+	private static final int LINE = 10;
+	private static final int NAME_EXTRA = 2;
+	private static final int SCROLLBAR_ROOM = 3;
+	private static final int FOOT_ONE_LINE = 15;
+	private static final int FOOT_TWO_LINES = 23;
+	private static final int REBUILD_TICKS = 10;
+	private static final int SCROLL_STEP = LINE;
+	private static final float SMALL = 0.75f;
+	private static final int RULE = 0x24FFFFFF;
 	private static final int MOD_GROUP = 0xFF5555FF;
-	private static final int EXACT_MOD = 0xFF8888AA;
+	private static final int EXACT_MOD = 0xFF8F8FD8;
+	private static final int TRACK = 0x1AFFFFFF;
+	private static final int THUMB = 0xA6C8BEFF;
 
-	private static ItemStack hovered = ItemStack.EMPTY;
-	private static List<FormattedText> fullLines = List.of();
-	private static volatile @Nullable TypeRanks ranks;
+	private static volatile boolean jeiPresent;
+	private static long tick;
+
+	private static ItemStack shown = ItemStack.EMPTY;
+	private static boolean stale;
+	private static long builtTick = Long.MIN_VALUE;
+	private static List<Component> lines = List.of();
+	private static List<Row> rows = List.of();
+	private static int rowsWidth = -1;
+	private static String group = "";
+	private static String exact = "";
+	private static int scroll;
+	private static int maxScroll;
+	private static @Nullable Rect2i box;
 
 	private SkiesDisplay() {}
 
-	static void subscribeToGroupChanges() {
-		for (GroupChangeEvent.Kind kind : GroupChangeEvent.Kind.values()) {
-			GroupChangeEvent.subscribe(kind, () -> ranks = null);
-		}
+	static void jeiStarted() {
+		jeiPresent = true;
 	}
 
-	/** The column the panel owns: beside the container, the full screen height. Null when it does not fit. */
-	static @Nullable Rect2i panelArea(@Nullable Screen screen) {
-		if (!SkiesConfig.display() || !(screen instanceof AbstractContainerScreen<?> container)) return null;
-		int width = SkiesConfig.panelWidth();
-		int left = container.getGuiLeft() + container.getXSize() + GAP;
-		if (screen.width - left < width + MIN_LIST_WIDTH) return null;
-		return new Rect2i(left, 0, width, screen.height);
+	static void jeiStopped() {
+		jeiPresent = false;
+		clear();
 	}
 
-	static void onGatherTooltip(RenderTooltipEvent.GatherComponents event) {
-		ItemStack stack = event.getItemStack();
-		Minecraft minecraft = Minecraft.getInstance();
-		if (stack.isEmpty() || minecraft.options.advancedItemTooltips || panelArea(minecraft.screen) == null) return;
-		List<Either<FormattedText, TooltipComponent>> elements = event.getTooltipElements();
-		if (elements.isEmpty()) return;
+	/** The reserved rectangle on this screen, or null for no panel (switched off, no JEI, or no room). */
+	static @Nullable Rect2i reservedArea(@Nullable Screen screen) {
+		if (!jeiPresent || !SkiesConfig.display()) return null;
+		return SkiesJei.reservedArea(screen, SkiesConfig.panelWidth(), tick);
+	}
 
-		List<FormattedText> lines = new ArrayList<>();
-		for (Either<FormattedText, TooltipComponent> element : elements) element.left().ifPresent(lines::add);
-		String exactMod = exactMod(stack);
-		if (lines.size() > 1 && lines.getLast().getString().equals(exactMod)) lines.removeLast();
-		hovered = stack.copy();
-		fullLines = List.copyOf(lines);
-
-		FormattedText name = elements.getFirst().left().orElse(stack.getHoverName());
-		Component group = Component.literal(modGroup(stack)).withStyle(ChatFormatting.BLUE, ChatFormatting.ITALIC);
-		Font font = minecraft.font;
-		int width = Math.max(font.width(name), font.width(group));
-		elements.clear();
-		elements.add(Either.left(name));
-		elements.add(Either.right(new DividerTooltipComponent(width)));
-		elements.add(Either.left(group));
+	static void onClientTick(ClientTickEvent.Post event) {
+		tick++;
 	}
 
 	static void onScreenRender(ScreenEvent.Render.Post event) {
-		Rect2i area = panelArea(event.getScreen());
-		if (area == null || hovered.isEmpty()) return;
-		AbstractContainerScreen<?> container = (AbstractContainerScreen<?>) event.getScreen();
-		GuiGraphics graphics = event.getGuiGraphics();
+		box = null;
+		Screen screen = event.getScreen();
+		Rect2i area = reservedArea(screen);
+		if (area == null || !SkiesJei.listDisplayed()) return;
+		follow(hoveredItem(screen));
+		if (shown.isEmpty()) return;
+		if ((stale && builtTick != tick) || tick - builtTick >= REBUILD_TICKS || tick < builtTick) rebuild();
+		draw(event.getGuiGraphics(), area);
+	}
+
+	static void onMouseScrolled(ScreenEvent.MouseScrolled.Pre event) {
+		Rect2i current = box;
+		if (current == null || maxScroll <= 0 || event.getScrollDeltaY() == 0) return;
+		if (!current.contains((int) event.getMouseX(), (int) event.getMouseY())) return;
+		int step = event.getScrollDeltaY() > 0 ? -SCROLL_STEP : SCROLL_STEP;
+		scroll = Math.max(0, Math.min(maxScroll, scroll + step));
+		event.setCanceled(true);
+	}
+
+	static void onScreenClosing(ScreenEvent.Closing event) {
+		clear();
+	}
+
+	private static void clear() {
+		shown = ItemStack.EMPTY;
+		lines = List.of();
+		rows = List.of();
+		rowsWidth = -1;
+		stale = false;
+		scroll = 0;
+		maxScroll = 0;
+		box = null;
+	}
+
+	/** The item under the mouse: the screen's own slot first, then JEI's recipe slots, list and bookmarks. */
+	private static ItemStack hoveredItem(Screen screen) {
+		if (screen instanceof AbstractContainerScreen<?> container) {
+			Slot slot = container.getSlotUnderMouse();
+			if (slot != null && slot.hasItem()) return slot.getItem();
+		}
+		return SkiesJei.hoveredItem(screen);
+	}
+
+	/** Keeps the last hovered item; a new one is built on the next tick at the latest, never every frame. */
+	private static void follow(ItemStack hovered) {
+		if (hovered.isEmpty() || ItemStack.isSameItemSameComponents(hovered, shown)) return;
+		if (!ItemStack.isSameItem(hovered, shown)) scroll = 0;
+		shown = hovered.copy();
+		stale = true;
+	}
+
+	private static void rebuild() {
+		builtTick = tick;
+		stale = false;
+		String namespace = BuiltInRegistries.ITEM.getKey(shown.getItem()).getNamespace();
+		exact = Services.PLATFORM.getModName(namespace);
+		group = ModGroups.name(namespace, Services.PLATFORM::getModName);
+		List<Component> built = ForcedShift.tooltipLines(shown);
+		List<Component> kept = new ArrayList<>(built.size());
+		for (int i = 0; i < built.size(); i++) {
+			Component line = built.get(i);
+			if (i > 0 && isModName(line)) continue;
+			kept.add(line);
+		}
+		lines = List.copyOf(kept);
+		rowsWidth = -1;
+	}
+
+	private static boolean isModName(Component line) {
+		String plain = ChatFormatting.stripFormatting(line.getString());
+		if (plain == null) return false;
+		plain = plain.strip();
+		return !plain.isEmpty() && (plain.equals(exact) || plain.equals(group));
+	}
+
+	private static void draw(GuiGraphics graphics, Rect2i area) {
 		Font font = Minecraft.getInstance().font;
-		int inner = area.getWidth() - 2 * PADDING;
-
-		List<Line> lines = new ArrayList<>();
-		for (int i = 0; i < fullLines.size(); i++) {
-			for (FormattedCharSequence part : font.split(fullLines.get(i), inner)) lines.add(new Line(part, TEXT, 1f));
-			if (i == 0) lines.add(Line.SPACER);
+		int ix = area.getX() + INSET;
+		int iw = area.getWidth() - 2 * INSET;
+		int textWidth = iw - SCROLLBAR_ROOM;
+		if (rowsWidth != textWidth) {
+			rows = wrap(font, textWidth);
+			rowsWidth = textWidth;
 		}
-		TypeRanks.Rank rank = ranks().rank(itemId(hovered));
-		if (rank != null) {
-			lines.add(Line.SPACER);
-			Component text = Component.literal(rank.position() + " of " + rank.total() + " in " + groupName(rank.groupId()));
-			for (FormattedCharSequence part : font.split(text, inner)) lines.add(new Line(part, RANK, 1f));
-		}
-		lines.add(Line.SPACER);
-		for (FormattedCharSequence part : font.split(Component.literal(modGroup(hovered)), inner)) lines.add(new Line(part, MOD_GROUP, 1f));
-		String exact = exactMod(hovered);
-		if (!exact.equals(modGroup(hovered))) {
-			for (FormattedCharSequence part : font.split(Component.literal(exact), (int) (inner / 0.75f))) {
-				lines.add(new Line(part, EXACT_MOD, 0.75f));
-			}
-		}
-
-		int height = 2 * PADDING;
-		for (Line line : lines) height += line.height(font);
+		boolean differs = !exact.equals(group);
+		int footH = differs ? FOOT_TWO_LINES : FOOT_ONE_LINE;
+		int total = 0;
+		for (Row row : rows) total += row.height();
+		int boxH = Math.min(area.getHeight(), INSET + total + 2 + footH + INSET);
 		int x = area.getX();
-		int y = Math.max(GAP, container.getGuiTop());
-		int right = x + area.getWidth();
-		int bottom = Math.min(y + height, event.getScreen().height - GAP);
+		int y = area.getY();
+		int iy = y + INSET;
+		int fy = y + boxH - INSET - footH;
+		int viewH = Math.max(0, fy - 2 - iy);
+		maxScroll = Math.max(0, total - viewH);
+		scroll = Math.max(0, Math.min(scroll, maxScroll));
+		box = new Rect2i(x, y, area.getWidth(), boxH);
 
 		graphics.pose().pushPose();
-		graphics.pose().translate(0, 0, 200);
-		graphics.fill(x, y, right, bottom, BACKGROUND);
-		graphics.fillGradient(x, y, x + 1, bottom, BORDER_TOP, BORDER_BOTTOM);
-		graphics.fillGradient(right - 1, y, right, bottom, BORDER_TOP, BORDER_BOTTOM);
-		graphics.fill(x, y, right, y + 1, BORDER_TOP);
-		graphics.fill(x, bottom - 1, right, bottom, BORDER_BOTTOM);
-		int lineY = y + PADDING;
-		for (Line line : lines) {
-			if (lineY + line.height(font) > bottom - PADDING) break;
-			if (line.text() != null) {
-				graphics.pose().pushPose();
-				graphics.pose().translate(x + PADDING, lineY, 0);
-				graphics.pose().scale(line.scale(), line.scale(), 1f);
-				graphics.drawString(font, line.text(), 0, 0, line.color(), true);
-				graphics.pose().popPose();
+		graphics.pose().translate(0, 0, Z);
+		TooltipRenderUtil.renderTooltipBackground(graphics, x + INSET, y + INSET, area.getWidth() - 2 * INSET, boxH - 2 * INSET, 0);
+
+		graphics.enableScissor(ix - 1, iy, ix + iw + 1, iy + viewH);
+		int rowY = iy - scroll;
+		for (Row row : rows) {
+			if (row.text() != null && rowY + LINE > iy && rowY < iy + viewH) {
+				graphics.drawString(font, row.text(), ix, rowY, 0xFFFFFFFF, true);
 			}
-			lineY += line.height(font);
+			rowY += row.height();
+		}
+		graphics.disableScissor();
+
+		if (maxScroll > 0) {
+			int barX = x + area.getWidth() - 5;
+			int thumbH = Math.max(8, Math.round((float) viewH * viewH / total));
+			int thumbY = iy + Math.round((viewH - thumbH) * (scroll / (float) maxScroll));
+			graphics.fill(barX, iy, barX + 2, iy + viewH, TRACK);
+			graphics.fill(barX, thumbY, barX + 2, thumbY + thumbH, THUMB);
+		}
+
+		graphics.fill(ix, fy, ix + iw, fy + 1, RULE);
+		Component groupText = Component.literal(font.plainSubstrByWidth(group, iw)).withStyle(ChatFormatting.ITALIC);
+		graphics.drawString(font, groupText, ix, fy + 4, MOD_GROUP, true);
+		if (differs) {
+			graphics.pose().pushPose();
+			graphics.pose().translate(ix, fy + 15, 0);
+			graphics.pose().scale(SMALL, SMALL, 1f);
+			graphics.drawString(font, font.plainSubstrByWidth(exact, (int) (iw / SMALL)), 0, 0, EXACT_MOD, true);
+			graphics.pose().popPose();
 		}
 		graphics.pose().popPose();
 	}
 
-	static void onScreenClosing(ScreenEvent.Closing event) {
-		hovered = ItemStack.EMPTY;
-		fullLines = List.of();
-	}
-
-	private record Line(@Nullable FormattedCharSequence text, int color, float scale) {
-		static final Line SPACER = new Line(null, 0, 1f);
-
-		int height(Font font) {
-			return text == null ? 3 : (int) Math.ceil((font.lineHeight + 1) * scale);
-		}
-	}
-
-	private static TypeRanks ranks() {
-		TypeRanks current = ranks;
-		if (current == null) {
-			List<TypeRanks.Source> sources = new ArrayList<>();
-			for (GroupDefinition group : GroupRepository.getAllIncludingScripted()) {
-				if (group.hasMemberOrder()) sources.add(new TypeRanks.Source(group.id(), group.extra()));
+	/** The tooltip lines wrapped to the panel: the name, a little space, then every other line. */
+	private static List<Row> wrap(Font font, int width) {
+		List<Row> wrapped = new ArrayList<>();
+		for (int i = 0; i < lines.size(); i++) {
+			Component line = lines.get(i);
+			List<FormattedCharSequence> parts = line.getString().isEmpty() ? List.of() : font.split(line, width);
+			if (parts.isEmpty()) {
+				wrapped.add(new Row(null, LINE));
+			} else {
+				for (FormattedCharSequence part : parts) wrapped.add(new Row(part, LINE));
 			}
-			current = TypeRanks.of(sources);
-			ranks = current;
+			if (i == 0) {
+				Row last = wrapped.removeLast();
+				wrapped.add(new Row(last.text(), last.height() + NAME_EXTRA));
+			}
 		}
-		return current;
+		return List.copyOf(wrapped);
 	}
 
-	private static String groupName(String groupId) {
-		for (GroupDefinition group : GroupRepository.getAllIncludingScripted()) {
-			if (group.id().equals(groupId)) return group.name();
-		}
-		return groupId;
-	}
-
-	private static String itemId(ItemStack stack) {
-		return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-	}
-
-	private static String modGroup(ItemStack stack) {
-		return ModGroups.name(BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace(), Services.PLATFORM::getModName);
-	}
-
-	private static String exactMod(ItemStack stack) {
-		return Services.PLATFORM.getModName(BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace());
+	private record Row(@Nullable FormattedCharSequence text, int height) {
 	}
 }
