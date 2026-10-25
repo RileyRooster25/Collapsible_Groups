@@ -38,6 +38,13 @@ class SkiesDataTest {
 	}
 
 	@Test
+	void aModThatBelongsToAFamilyShowsTheFamilyName() {
+		assertNull(ModGroups.reload("{\"schema\": 1, \"groups\": {\"mekanism_weaponry\": \"Mekanism\", \"mekanism\": \"Mekanism\"}}"));
+		assertEquals("Mekanism", ModGroups.name("mekanism_weaponry", id -> "Mekanism: Weaponry"));
+		assertEquals("Mekanism", ModGroups.name("mekanism", id -> "Mekanism"));
+	}
+
+	@Test
 	void footerListsDistinctModGroupsThenACount() {
 		ModGroups.reload("{\"schema\": 1, \"groups\": {\"mekanismtools\": \"Mekanism\", \"mekanism\": \"Mekanism\"}}");
 		assertEquals("Mekanism, a, b", ModGroups.footer(List.of("mekanism", "mekanismtools", "a", "b"), id -> id));

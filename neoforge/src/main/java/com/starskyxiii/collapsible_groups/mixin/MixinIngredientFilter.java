@@ -1,5 +1,6 @@
 package com.starskyxiii.collapsible_groups.mixin;
 
+import com.starskyxiii.collapsible_groups.client.skies.SkiesListView;
 import com.starskyxiii.collapsible_groups.compat.jei.JeiViewerAdapter;
 import com.starskyxiii.collapsible_groups.compat.jei.element.FluidChildElement;
 import com.starskyxiii.collapsible_groups.compat.jei.runtime.JeiIngredientFilterController;
@@ -70,9 +71,11 @@ public abstract class MixinIngredientFilter {
 	@Inject(method = "getElements", at = @At("HEAD"), cancellable = true, require = 0)
 	private void cg$onGetElements(CallbackInfoReturnable<List<IElement<?>>> cir) {
 		if (!ViewerLifecycleCoordinator.isJeiSelected() || this.cg$controller == null) return;
-		cir.setReturnValue(JeiIngredientFilterHook.getElementsAfterDirtyStateUpdate(
+		List<IElement<?>> elements = JeiIngredientFilterHook.getElementsAfterDirtyStateUpdate(
 			this::cg$updateDirtyState,
 			this.cg$controller::getElements
-		));
+		);
+		SkiesListView.noteElements(elements);
+		cir.setReturnValue(elements);
 	}
 }

@@ -1,5 +1,6 @@
 package com.starskyxiii.collapsible_groups.mixin;
 
+import com.starskyxiii.collapsible_groups.client.skies.SkiesViewState;
 import com.starskyxiii.collapsible_groups.compat.jei.runtime.JeiIngredientListOverlayController;
 import com.starskyxiii.collapsible_groups.config.NeoForgeConfig;
 import com.starskyxiii.collapsible_groups.viewer.LoaderViewerEnvironment;
@@ -9,6 +10,7 @@ import mezz.jei.gui.input.GuiTextFieldFilter;
 import mezz.jei.gui.overlay.IngredientListOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -39,6 +41,11 @@ public abstract class MixinIngredientListOverlay {
 			this.configButton, this.searchField,
 			() -> ((MixinGuiTextFieldFilterAccessor) (Object) this.searchField).cg$getArea(),
 			this::isListDisplayed, () -> NeoForgeConfig.SHOW_MANAGER_BUTTON.get());
+		IngredientListOverlay overlay = (IngredientListOverlay) (Object) this;
+		SkiesViewState.setRelayout(() -> {
+			Screen screen = Minecraft.getInstance().screen;
+			if (screen != null) overlay.getScreenPropertiesUpdater().updateScreen(screen).forceUpdate();
+		});
 	}
 
 	@Inject(

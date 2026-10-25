@@ -473,5 +473,7 @@
   "collapsible_groups.configuration.defaultGroups.disabledCategories": "內建分類",
   "collapsible_groups.configuration.defaultGroups.disabledCategories.tooltip": "選擇要啟用的內建分類。你建立的自訂副本會保留。變更需回到主設定畫面儲存。",
   "collapsible_groups.configuration.ui.showCategorySidebar": "顯示分類側欄",
-  "collapsible_groups.configuration.ui.showCategorySidebar.tooltip": "顯示分類側欄與開關按鈕。關閉時管理器顯示全部分類，並保留先前的篩選偏好。"
+  "collapsible_groups.configuration.ui.showCategorySidebar.tooltip": "顯示分類側欄與開關按鈕。關閉時管理器顯示全部分類，並保留先前的篩選偏好。",
+  "key.categories.collapsible_groups": "可收合群組",
+  "key.collapsible_groups.cycle_view_mode": "切換 JEI 清單檢視模式"
 }

@@ -473,5 +473,7 @@
   "collapsible_groups.configuration.defaultGroups.disabledCategories": "Built-in categories",
   "collapsible_groups.configuration.defaultGroups.disabledCategories.tooltip": "Choose which built-in categories to enable. Copies you created are kept. Changes are saved from the main settings screen.",
   "collapsible_groups.configuration.ui.showCategorySidebar": "Show category sidebar",
-  "collapsible_groups.configuration.ui.showCategorySidebar.tooltip": "Show the category sidebar and its toggle. When hidden, the Manager shows all categories and remembers your previous filter."
+  "collapsible_groups.configuration.ui.showCategorySidebar.tooltip": "Show the category sidebar and its toggle. When hidden, the Manager shows all categories and remembers your previous filter.",
+  "key.categories.collapsible_groups": "Collapsible Groups",
+  "key.collapsible_groups.cycle_view_mode": "Cycle JEI list view mode"
 }

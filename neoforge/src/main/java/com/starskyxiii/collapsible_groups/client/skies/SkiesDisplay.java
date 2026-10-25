@@ -6,13 +6,13 @@ import com.starskyxiii.collapsible_groups.group.GroupDefinition;
 import com.starskyxiii.collapsible_groups.group.GroupRepository;
 import com.starskyxiii.collapsible_groups.platform.Services;
 import com.starskyxiii.collapsible_groups.skies.ModGroups;
+import com.starskyxiii.collapsible_groups.skies.PanelPlacement;
 import com.starskyxiii.collapsible_groups.skies.TypeRanks;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -20,6 +20,7 @@ import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.jetbrains.annotations.Nullable;
@@ -28,14 +29,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The short tooltip (item name, a divider, the mod group) and the fixed-width detail panel between the
- * container and the JEI list, which shows the last hovered item's full tooltip, its rank in its type,
+ * The short tooltip (item name, a divider, the mod group) and the fixed-width detail panel in the left
+ * column of any screen where JEI's ingredient list is showing (inventories, machines, JEI's recipe screen),
+ * which shows the last hovered item's full tooltip, its rank in its type,
  * and its mod group with the exact mod beneath.
  */
 public final class SkiesDisplay {
-	private static final int GAP = 2;
+	private static final int GAP = PanelPlacement.GAP;
 	private static final int PADDING = 4;
-	private static final int MIN_LIST_WIDTH = 4 * 18;
+	private static final boolean JEI_LOADED = ModList.get().isLoaded("jei");
 	private static final int BACKGROUND = 0xF0100010;
 	private static final int BORDER_TOP = 0x505000FF;
 	private static final int BORDER_BOTTOM = 0x5028007F;
@@ -56,13 +58,27 @@ public final class SkiesDisplay {
 		}
 	}
 
-	/** The column the panel owns: beside the container, the full screen height. Null when it does not fit. */
+	/**
+	 * The column the panel owns: the left edge of the screen, top-aligned with the screen's content, down
+	 * to the bottom. Null when JEI's list is not showing, or the space left of the content is too narrow.
+	 */
 	static @Nullable Rect2i panelArea(@Nullable Screen screen) {
-		if (!SkiesConfig.display() || !(screen instanceof AbstractContainerScreen<?> container)) return null;
-		int width = SkiesConfig.panelWidth();
-		int left = container.getGuiLeft() + container.getXSize() + GAP;
-		if (screen.width - left < width + MIN_LIST_WIDTH) return null;
-		return new Rect2i(left, 0, width, screen.height);
+		if (screen == null || !SkiesConfig.display() || !listShowing()) return null;
+		int[] origin = SkiesJei.contentOrigin(screen);
+		if (origin == null) return null;
+		return PanelPlacement.leftColumn(screen.width, screen.height, origin[0], origin[1], SkiesConfig.panelWidth())
+			.map(area -> new Rect2i(area.x(), area.y(), area.width(), area.height()))
+			.orElse(null);
+	}
+
+	/** JEI's search box has the keyboard. */
+	static boolean searchFocused() {
+		return JEI_LOADED && SkiesJei.searchFocused();
+	}
+
+	/** JEI's ingredient list is showing on the current screen: the one test for the tooltip and the panel. */
+	static boolean listShowing() {
+		return JEI_LOADED && SkiesJei.listShowing();
 	}
 
 	static void onGatherTooltip(RenderTooltipEvent.GatherComponents event) {
@@ -90,9 +106,9 @@ public final class SkiesDisplay {
 	}
 
 	static void onScreenRender(ScreenEvent.Render.Post event) {
+		drawAnnouncement(event);
 		Rect2i area = panelArea(event.getScreen());
 		if (area == null || hovered.isEmpty()) return;
-		AbstractContainerScreen<?> container = (AbstractContainerScreen<?>) event.getScreen();
 		GuiGraphics graphics = event.getGuiGraphics();
 		Font font = Minecraft.getInstance().font;
 		int inner = area.getWidth() - 2 * PADDING;
@@ -120,9 +136,9 @@ public final class SkiesDisplay {
 		int height = 2 * PADDING;
 		for (Line line : lines) height += line.height(font);
 		int x = area.getX();
-		int y = Math.max(GAP, container.getGuiTop());
+		int y = area.getY();
 		int right = x + area.getWidth();
-		int bottom = Math.min(y + height, event.getScreen().height - GAP);
+		int bottom = Math.min(y + height, area.getY() + area.getHeight());
 
 		graphics.pose().pushPose();
 		graphics.pose().translate(0, 0, 200);
@@ -143,6 +159,21 @@ public final class SkiesDisplay {
 			}
 			lineY += line.height(font);
 		}
+		graphics.pose().popPose();
+	}
+
+	/** The view mode message, briefly, at the top of the screen after the view mode key is pressed. */
+	private static void drawAnnouncement(ScreenEvent.Render.Post event) {
+		String text = SkiesViewState.announcement();
+		if (text.isEmpty()) return;
+		Font font = Minecraft.getInstance().font;
+		GuiGraphics graphics = event.getGuiGraphics();
+		int width = font.width(text);
+		int x = (event.getScreen().width - width) / 2;
+		graphics.pose().pushPose();
+		graphics.pose().translate(0, 0, 400);
+		graphics.fill(x - 4, GAP, x + width + 4, GAP + font.lineHeight + 4, BACKGROUND);
+		graphics.drawString(font, text, x, GAP + 2, TEXT, true);
 		graphics.pose().popPose();
 	}
 
