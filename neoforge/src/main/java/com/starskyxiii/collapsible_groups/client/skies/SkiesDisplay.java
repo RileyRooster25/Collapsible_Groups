@@ -142,7 +142,7 @@ public final class SkiesDisplay {
 		String namespace = BuiltInRegistries.ITEM.getKey(shown.getItem()).getNamespace();
 		exact = Services.PLATFORM.getModName(namespace);
 		group = ModGroups.name(namespace, Services.PLATFORM::getModName);
-		List<Component> built = ForcedShift.tooltipLines(shown);
+		List<Component> built = safeTooltipLines(shown);
 		List<Component> kept = new ArrayList<>(built.size());
 		for (int i = 0; i < built.size(); i++) {
 			Component line = built.get(i);
@@ -238,5 +238,35 @@ public final class SkiesDisplay {
 	}
 
 	private record Row(@Nullable FormattedCharSequence text, int height) {
+	}
+
+	private static final java.util.Set<String> FAILED_TOOLTIPS = new java.util.HashSet<>();
+
+	/**
+	 * The panel's lines for an item: with Shift forced first; if a mod's tooltip code throws there, the
+	 * ordinary lines; if that throws too, the name alone. A failure is logged once per item and never
+	 * reaches the screen, so one broken tooltip cannot crash the game.
+	 */
+	private static List<Component> safeTooltipLines(ItemStack stack) {
+		try {
+			return ForcedShift.tooltipLines(stack);
+		} catch (RuntimeException | LinkageError forced) {
+			logOnce(stack, "with Shift", forced);
+		}
+		try {
+			Minecraft minecraft = Minecraft.getInstance();
+			return stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.of(minecraft.level), minecraft.player,
+				minecraft.options.advancedItemTooltips ? net.minecraft.world.item.TooltipFlag.ADVANCED : net.minecraft.world.item.TooltipFlag.NORMAL);
+		} catch (RuntimeException | LinkageError plain) {
+			logOnce(stack, "without Shift", plain);
+			return List.of(stack.getHoverName());
+		}
+	}
+
+	private static void logOnce(ItemStack stack, String how, Throwable failure) {
+		String id = BuiltInRegistries.ITEM.getKey(stack.getItem()) + " " + how;
+		if (FAILED_TOOLTIPS.add(id)) {
+			com.starskyxiii.collapsible_groups.Constants.LOG.warn("Detail panel: the tooltip of {} failed; showing less", id, failure);
+		}
 	}
 }
